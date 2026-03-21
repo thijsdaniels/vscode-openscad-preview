@@ -1,8 +1,6 @@
 import { ExtensionContext, window } from "vscode";
 import { registerShowPanelCommand } from "./commands/showPanel";
 import { ScadSessionManager } from "./core/ScadSessionManager";
-import { ScadClient } from "./services/ScadClient";
-import { ScadParser } from "./services/ScadParser";
 
 let sessionManager: ScadSessionManager | undefined;
 

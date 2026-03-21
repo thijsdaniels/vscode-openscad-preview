@@ -3,6 +3,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { ScadParameter } from "../../shared/types/ScadParameter";
+import { ModelContext, modelContext } from "../contexts/ModelContext";
 import {
   parameterContext,
   ParameterContext,
@@ -39,6 +40,31 @@ export class Parameters extends LitElement {
     .export-container {
       padding: 16px;
       border-top: 1px solid var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+
+    .export-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      border-radius: 2px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .export-button:hover {
+      background: var(--vscode-button-hoverBackground);
+    }
+
+    .export-button:active {
+      background: var(--vscode-button-activeBackground);
     }
 
     h3 {
@@ -90,6 +116,10 @@ export class Parameters extends LitElement {
 
   @property({ type: Boolean })
   public open = false;
+
+  @consume({ context: modelContext, subscribe: true })
+  @state()
+  private modelContext!: ModelContext;
 
   @consume({ context: parameterContext, subscribe: true })
   @state()
@@ -147,6 +177,16 @@ export class Parameters extends LitElement {
             </div>
           `,
         )}
+      </div>
+      <div class="export-container">
+        <button
+          class="export-button"
+          title="Export model with current parameters"
+          @click=${() => this.modelContext.export()}
+        >
+          <material-symbol name="file_save"></material-symbol>
+          Export
+        </button>
       </div>
     `;
   }

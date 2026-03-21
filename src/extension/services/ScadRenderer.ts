@@ -12,16 +12,20 @@ type OnCompleteCallback = (data: {
 export class ScadRenderer {
   private onStart?: OnStartCallback;
   private onComplete: OnCompleteCallback;
+  private onLog?: (chunk: string) => void;
 
   constructor({
     onStart,
     onComplete,
+    onLog,
   }: {
     onStart?: OnStartCallback;
     onComplete: OnCompleteCallback;
+    onLog?: (chunk: string) => void;
   }) {
     this.onStart = onStart;
     this.onComplete = onComplete;
+    this.onLog = onLog;
   }
 
   public async render(
@@ -38,7 +42,12 @@ export class ScadRenderer {
       .getConfiguration("openscad")
       .get<ModelFormat>("previewFormat", ModelFormat.ThreeMF);
 
-    const modelBuffer = await ScadClient.render(path, parameters, format);
+    const modelBuffer = await ScadClient.render(
+      path,
+      parameters,
+      format,
+      this.onLog,
+    );
 
     this.onComplete({ buffer: modelBuffer, format });
   }

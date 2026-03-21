@@ -3,6 +3,7 @@ import { css, html, LitElement, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { ExtensionToWebviewMessage } from "../../shared/types/ExtensionToWebviewMessage";
 import { modelContext, ModelContext } from "../contexts/ModelContext";
+import { LogController } from "../controllers/LogController";
 import { PanelContext, panelContext } from "../contexts/PanelContext";
 import {
   parameterContext,
@@ -111,6 +112,8 @@ export class App extends LitElement {
     export: bridge.exportModel,
   };
 
+  private logController = new LogController(this);
+
   private unsubscribe: (() => void) | null = null;
 
   connectedCallback() {
@@ -146,6 +149,14 @@ export class App extends LitElement {
           };
         } else {
           bridge.reportError("No parameters in update message");
+        }
+        break;
+      case "loadingState":
+        this.logController.processLoadingState(message.loading);
+        break;
+      case "log":
+        if (message.message) {
+          this.logController.processLogChunk(message.message);
         }
         break;
     }
@@ -211,9 +222,9 @@ export class App extends LitElement {
     }
 
     return html`
-      <div style="display: flex; height: 100%;">
+      <div style="display: flex; flex-direction: column; height: 100%;">
         <scad-toolbar></scad-toolbar>
-        <scad-preview></scad-preview>
+        <scad-preview style="flex: 1;"></scad-preview>
       </div>
     `;
   }

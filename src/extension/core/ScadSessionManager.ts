@@ -1,5 +1,4 @@
-import { OutputChannel, Uri } from "vscode";
-import { ScadClient } from "../services/ScadClient";
+import { Uri } from "vscode";
 import { ScadSession } from "./ScadSession";
 
 /**

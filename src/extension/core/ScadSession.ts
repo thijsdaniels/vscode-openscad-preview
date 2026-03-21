@@ -32,6 +32,9 @@ export class ScadSession {
   private _onRenderStarted = new EventEmitter<void>();
   public readonly onRenderStarted = this._onRenderStarted.event;
 
+  private _onLog = new EventEmitter<string>();
+  public readonly onLog = this._onLog.event;
+
   /**
    * @todo The session lifecycle isn't as clean as it could be. For example,
    * it shouldn't be necessary to fire the onParametersUpdated event from the
@@ -43,10 +46,10 @@ export class ScadSession {
    * very clearly laid out.
    */
   constructor(public readonly documentUri: Uri) {
-    // Renderer that generates a model for the preview.
     this.scadRenderer = new ScadRenderer({
       onStart: () => this._onRenderStarted.fire(),
       onComplete: (data) => this._onRenderCompleted.fire(data),
+      onLog: (chunk) => this._onLog.fire(chunk),
     });
 
     // Manager for current parameter values and overrides.

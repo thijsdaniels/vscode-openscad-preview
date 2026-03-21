@@ -18,6 +18,7 @@ export class ScadClient {
     scadPath: string,
     parameters: Record<string, string | number | boolean> = {},
     format: ModelFormat = ModelFormat.ThreeMF,
+    onStderr?: (chunk: string) => void,
   ): Promise<Buffer> {
     // Kill any currently running process for this file to prevent runway spawn leaks
     // when sliders emit rapid updates
@@ -43,15 +44,16 @@ export class ScadClient {
         format,
         "-o",
         tmpFile,
-        "-q",
         ...paramArgs,
         scadPath,
       ]);
 
       this.activeProcesses.set(scadPath, process);
 
-      process.stderr.on("data", () => {
-        // We don't log normal output here natively yet, but we will for Diagnostics.
+      process.stderr.on("data", (data) => {
+        if (onStderr) {
+          onStderr(data.toString());
+        }
       });
 
       process.on("close", async (code, signal) => {

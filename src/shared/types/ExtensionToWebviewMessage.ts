@@ -14,4 +14,5 @@ export type ExtensionToWebviewMessage =
       parameters: ScadParameter[];
       overrides: Record<string, string | number | boolean>;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "log"; message: string };

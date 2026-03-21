@@ -123,7 +123,7 @@ export class ScadNumberfield extends LitElement {
       this.hasMoved = true;
     }
 
-    let sensitivity = 1;
+    let sensitivity: number;
     if (this.min !== undefined && this.max !== undefined) {
       const range = this.max - this.min;
       const rect = this.getBoundingClientRect();
@@ -159,7 +159,7 @@ export class ScadNumberfield extends LitElement {
     }
   };
 
-  private handlePointerUp = (e: PointerEvent) => {
+  private handlePointerUp = () => {
     if (!this.isDragging) return;
     this.isDragging = false;
 
@@ -172,7 +172,7 @@ export class ScadNumberfield extends LitElement {
     }
   };
 
-  protected async updated(changedProperties: Map<string, any>) {
+  protected async updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has("isEditing") && this.isEditing && this.inputEl) {
       this.inputEl.focus();
       this.inputEl.select();

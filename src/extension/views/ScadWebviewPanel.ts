@@ -113,6 +113,19 @@ export class ScadWebviewPanel {
       this.disposables,
     );
 
+    this.session.onLog(
+      (message) => {
+        if (this.isWebviewReady) {
+          this.postMessage({
+            type: "log",
+            message,
+          });
+        }
+      },
+      null,
+      this.disposables,
+    );
+
     // Clean up on panel close
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
   }

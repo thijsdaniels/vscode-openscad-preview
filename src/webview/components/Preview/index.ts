@@ -212,14 +212,14 @@ function getTheme(): Theme {
     .clone()
     .lerp(
       new Color(styles.getPropertyValue("--vscode-editor-foreground").trim()),
-      0.15,
+      isDark(background) ? 0.15 : 0.5,
     );
 
   const gridMinor = background
     .clone()
     .lerp(
       new Color(styles.getPropertyValue("--vscode-editor-foreground").trim()),
-      0.05,
+      isDark(background) ? 0.05 : 0.35,
     );
 
   const plate = background
@@ -236,6 +236,14 @@ function getTheme(): Theme {
       0.05,
     );
 
+  const additive = new Color(
+    styles.getPropertyValue("--vscode-editor-foreground").trim(),
+  );
+
+  const subtractive = new Color(
+    styles.getPropertyValue("--vscode-editor-foreground").trim(),
+  );
+
   return {
     background,
     fog,
@@ -243,5 +251,11 @@ function getTheme(): Theme {
     gridMinor,
     plate,
     plateGrid,
+    additive,
+    subtractive,
   };
+}
+
+function isDark(color: Color) {
+  return color.r * 0.299 + color.g * 0.587 + color.b * 0.114 < 0.5;
 }

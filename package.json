@@ -20,6 +20,9 @@
     "test": "node ./dist/test/runTest.js",
     "update": "npx npm-check-updates@latest -u -i"
   },
+  "extensionPack": [
+    "Leathong.openscad-language-support"
+  ],
   "dependencies": {
     "@lit/context": "^1.1.6",
     "@vscode-elements/elements": "^2.5.1",

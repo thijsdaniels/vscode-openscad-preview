@@ -2,7 +2,6 @@ import { consume } from "@lit/context";
 import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
-import { ModelContext, modelContext } from "../contexts/ModelContext";
 import { PanelContext, panelContext } from "../contexts/PanelContext";
 import {
   CameraMode,
@@ -76,31 +75,31 @@ export class PreviewToolbar extends LitElement {
   static styles = css`
     :host {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       justify-content: space-between;
       align-items: center;
       gap: 1rem;
       padding: 0.5rem;
       background: var(--vscode-panel-background);
-      border-right: 1px solid var(--vscode-panel-border);
+      border-bottom: 1px solid var(--vscode-panel-border);
     }
 
     .toolbar-section {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
       gap: 1rem;
     }
 
     .toolbar-segment {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
     }
 
     .segment-button {
       border: 1px solid var(--vscode-input-border);
-      border-bottom: none;
+      border-right: none;
       background: transparent;
       color: var(--vscode-toolbar-foreground);
       padding: 0.25rem;
@@ -136,13 +135,13 @@ export class PreviewToolbar extends LitElement {
 
     .segment-button.first {
       border-top-left-radius: 0.25rem;
-      border-top-right-radius: 0.25rem;
+      border-bottom-left-radius: 0.25rem;
     }
 
     .segment-button.last {
-      border-bottom-left-radius: 0.25rem;
+      border-top-right-radius: 0.25rem;
       border-bottom-right-radius: 0.25rem;
-      border-bottom: 1px solid var(--vscode-input-border);
+      border-right: 1px solid var(--vscode-input-border);
     }
   `;
 
@@ -154,28 +153,8 @@ export class PreviewToolbar extends LitElement {
   @state()
   viewSettings!: ViewSettingsContext;
 
-  @consume({ context: modelContext, subscribe: true })
-  @state()
-  modelContext!: ModelContext;
-
   render() {
     return html`
-      <toolbar-section>
-        <div class="toolbar-segment">
-          <button
-            class=${classMap({
-              "segment-button": true,
-              primary: true,
-              first: true,
-              last: true,
-            })}
-            title="Export"
-            @click=${() => this.modelContext.export()}
-          >
-            <material-symbol name="file_save"></material-symbol>
-          </button>
-        </div>
-      </toolbar-section>
       <div class="toolbar-section">
         ${mapObject(viewSettingsButtons, ([key, button]) => {
           return html`
@@ -210,24 +189,24 @@ export class PreviewToolbar extends LitElement {
           <button
             class=${classMap({
               "segment-button": true,
-              first: true,
-              active: this.panelContext.panels.parameters,
+              last: true,
+              active: this.panelContext.panels.debug,
             })}
-            title="Toggle Right Panel"
-            @click=${() => this.panelContext.toggle("parameters")}
+            title="Toggle Log"
+            @click=${() => this.panelContext.toggle("debug")}
           >
-            <material-symbol name="settings"></material-symbol>
+            <material-symbol name="code"></material-symbol>
           </button>
           <button
             class=${classMap({
               "segment-button": true,
-              last: true,
-              active: this.panelContext.panels.debug,
+              first: true,
+              active: this.panelContext.panels.parameters,
             })}
-            title="Toggle Bottom Panel"
-            @click=${() => this.panelContext.toggle("debug")}
+            title="Toggle Parameters"
+            @click=${() => this.panelContext.toggle("parameters")}
           >
-            <material-symbol name="code"></material-symbol>
+            <material-symbol name="build"></material-symbol>
           </button>
         </div>
       </div>

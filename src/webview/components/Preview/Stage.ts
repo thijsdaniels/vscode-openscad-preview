@@ -29,6 +29,8 @@ export interface Theme {
   fog: Color;
   plate: Color;
   plateGrid: Color;
+  additive: Color;
+  subtractive: Color;
 }
 
 export class Stage {
@@ -135,6 +137,20 @@ export class Stage {
 
         group.traverse((child) => {
           if (child instanceof Mesh) {
+            const materials = Array.isArray(child.material)
+              ? child.material
+              : [child.material];
+            materials.forEach((mat) => {
+              if (mat.color) {
+                const hex = mat.color.getHexString().toLowerCase();
+                if (hex === "f9d72c") {
+                  mat.color.copy(this.theme.additive);
+                } else if (hex === "9dcb51") {
+                  mat.color.copy(this.theme.subtractive);
+                }
+              }
+            });
+
             if (!child.geometry.attributes.normal) {
               child.geometry.computeVertexNormals();
             }
@@ -156,7 +172,7 @@ export class Stage {
 
         // STLs do not contain color data, so we initialize with a standard blank material
         const material = new MeshStandardMaterial({
-          color: 0xffffff,
+          color: this.theme.additive,
           flatShading: false,
           fog: false,
         });
