@@ -1,6 +1,10 @@
 {
   "name": "vscode-extension-openscad",
-  "version": "0.1.0",
+  "displayName": "OpenSCAD Preview",
+  "description": "An interactive 3D preview environment for OpenSCAD (.scad) files.",
+  "publisher": "thijsdaniels",
+  "version": "0.0.0",
+  "icon": "icon.png",
   "author": "Thijs Daniels",
   "license": "MIT",
   "repository": {
@@ -32,6 +36,7 @@
     "three": "^0.183.2"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.x",
     "@types/three": "^0.183.1",
@@ -122,6 +127,7 @@
   "main": "./dist/extension.cjs",
   "files": [
     "dist",
+    "icon.png",
     "node_modules/three/build/three.module.js",
     "node_modules/three/examples/jsm/controls/OrbitControls.js",
     "node_modules/three/examples/jsm/loaders/STLLoader.js"
