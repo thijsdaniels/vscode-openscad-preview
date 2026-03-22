@@ -52,7 +52,7 @@
     "vscode-test": "^1.6.1"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.109.0"
   },
   "contributes": {
     "configuration": {
