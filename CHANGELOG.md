@@ -1,4 +1,4 @@
-# vscode-extension-openscad
+# vscode-openscad-preview
 
 ## 0.1.0
 

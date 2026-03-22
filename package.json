@@ -1,5 +1,5 @@
 {
-  "name": "vscode-extension-openscad",
+  "name": "vscode-openscad-preview",
   "displayName": "OpenSCAD Preview",
   "description": "An interactive 3D preview environment for OpenSCAD (.scad) files.",
   "publisher": "thijsdaniels",
@@ -9,7 +9,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thijsdaniels/vscode-extension-openscad.git"
+    "url": "https://github.com/thijsdaniels/vscode-openscad-preview.git"
   },
   "type": "module",
   "scripts": {
