@@ -1,5 +1,11 @@
 # vscode-openscad-preview
 
+## 0.1.1
+
+### Patch Changes
+
+- e8c5372: Additional information has been added to the readme.
+
 ## 0.1.0
 
 ### Minor Changes
