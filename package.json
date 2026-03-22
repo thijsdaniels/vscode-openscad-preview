@@ -127,6 +127,7 @@
   "main": "./dist/extension.cjs",
   "files": [
     "dist",
+    "docs",
     "snippets",
     "syntaxes",
     "language-configuration.json",

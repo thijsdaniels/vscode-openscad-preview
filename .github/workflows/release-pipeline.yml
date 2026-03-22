@@ -17,6 +17,7 @@ jobs:
       pull-requests: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
+      is_new_version: ${{ env.IS_NEW_VERSION }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -37,24 +38,35 @@ jobs:
         id: version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
+      - name: Check if Version Exists
+        id: check
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.VERSION }}"; then
+            echo "IS_NEW_VERSION=false" >> $GITHUB_ENV
+            echo "PUBLISH_CMD=echo 'Version v${{ env.VERSION }} already exists. Skipping publish.'" >> $GITHUB_ENV
+          else
+            echo "IS_NEW_VERSION=true" >> $GITHUB_ENV
+            echo "PUBLISH_CMD=npx changeset tag" >> $GITHUB_ENV
+          fi
+
       - name: Create PR or Publish Release
         id: changesets
         uses: changesets/action@v1
         with:
           commit: "chore(release): version packages"
           title: "Release"
-          publish: npx changeset tag
+          publish: ${{ env.PUBLISH_CMD }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attach Artifact to GitHub Release
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.published == 'true' && env.IS_NEW_VERSION == 'true'
         run: gh release upload v${{ env.VERSION }} openscad-preview.vsix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Upload Artifact for Publish Jobs
-        if: steps.changesets.outputs.published == 'true'
+        if: steps.changesets.outputs.published == 'true' && env.IS_NEW_VERSION == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: vsix-package
@@ -64,7 +76,7 @@ jobs:
   publish-vsce:
     name: Publish VSCE
     needs: version-and-release
-    if: needs.version-and-release.outputs.published == 'true'
+    if: needs.version-and-release.outputs.published == 'true' && needs.version-and-release.outputs.is_new_version == 'true'
     runs-on: ubuntu-latest
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -85,7 +97,7 @@ jobs:
   publish-ovsx:
     name: Publish OVSX
     needs: version-and-release
-    if: needs.version-and-release.outputs.published == 'true'
+    if: needs.version-and-release.outputs.published == 'true' && needs.version-and-release.outputs.is_new_version == 'true'
     runs-on: ubuntu-latest
     env:
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
