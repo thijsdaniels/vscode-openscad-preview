@@ -127,9 +127,11 @@
   "main": "./dist/extension.cjs",
   "files": [
     "dist",
+    "snippets",
+    "syntaxes",
+    "language-configuration.json",
     "icon.png",
-    "node_modules/three/build/three.module.js",
-    "node_modules/three/examples/jsm/controls/OrbitControls.js",
-    "node_modules/three/examples/jsm/loaders/STLLoader.js"
+    "LICENSE.md",
+    "CHANGELOG.md"
   ]
 }
