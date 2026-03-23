@@ -1,5 +1,12 @@
 # vscode-openscad-preview
 
+## 0.1.2
+
+### Patch Changes
+
+- 5dc6fb1: Include codicons in dist.
+- 5dc6fb1: Widen supported engine version to ^1.105.1 for Cursor and Antigravity users.
+
 ## 0.1.1
 
 ### Patch Changes
