@@ -3,7 +3,7 @@
   "displayName": "OpenSCAD Preview",
   "description": "An interactive 3D preview environment for OpenSCAD (.scad) files.",
   "publisher": "thijsdaniels",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "icon": "icon.png",
   "author": "Thijs Daniels",
   "license": "MIT",

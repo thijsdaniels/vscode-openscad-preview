@@ -1,5 +1,11 @@
 # vscode-openscad-preview
 
+## 0.2.0
+
+### Minor Changes
+
+- 5f152c8: The path to the openscad executable is now detected in various expected locations and can also be manually configured.
+
 ## 0.1.2
 
 ### Patch Changes
