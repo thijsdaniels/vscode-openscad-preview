@@ -71,6 +71,11 @@
           "type": "string",
           "default": "",
           "description": "Optional path to the slicer executable (e.g., Bambu Studio or PrusaSlicer). If left empty, the OS default application for the 3D model will be used."
+        },
+        "openscad.executablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the OpenSCAD executable. Leave empty to use automatic detection or the system PATH."
         }
       }
     },

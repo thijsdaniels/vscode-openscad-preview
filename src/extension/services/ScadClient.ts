@@ -1,8 +1,20 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { existsSync } from "fs";
 import { readFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { platform } from "process";
+import { workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
+
+const platformDefaults: Record<string, string[]> = {
+  darwin: ["/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD"],
+  win32: [
+    "C:\\Program Files\\OpenSCAD\\openscad.exe",
+    "C:\\Program Files (x86)\\OpenSCAD\\openscad.exe",
+  ],
+  linux: ["/usr/bin/openscad", "/usr/local/bin/openscad"],
+};
 
 /**
  * A TypeScript wrapper around the OpenSCAD CLI. This is currently very limited
@@ -13,6 +25,31 @@ export class ScadClient {
     string,
     ChildProcessWithoutNullStreams
   >();
+
+  private static _executablePath: string | undefined;
+
+  private static get executablePath(): string {
+    if (this._executablePath) {
+      return this._executablePath;
+    }
+
+    const setting = workspace
+      .getConfiguration("openscad")
+      .get<string>("executablePath", "");
+
+    if (setting) {
+      return setting;
+    }
+
+    const defaults = platformDefaults[platform] ?? [];
+    const detected = defaults.find((path) => existsSync(path));
+
+    if (detected) {
+      return detected;
+    }
+
+    return "openscad";
+  }
 
   public static async render(
     scadPath: string,
@@ -39,7 +76,7 @@ export class ScadClient {
         paramArgs.push("-D", `${name}=${value}`);
       }
 
-      const process = spawn("openscad", [
+      const process = spawn(ScadClient.executablePath, [
         "--export-format",
         format,
         "-o",
