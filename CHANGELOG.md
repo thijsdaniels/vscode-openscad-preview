@@ -1,5 +1,11 @@
 # vscode-openscad-preview
 
+## 0.2.1
+
+### Patch Changes
+
+- 7190d89: The last render is now displayed when the tab regains focus.
+
 ## 0.2.0
 
 ### Minor Changes
