@@ -20,6 +20,7 @@ export class ScadWebviewPanel {
   private readonly panel: WebviewPanel;
   private disposables: Disposable[] = [];
   private isWebviewReady: boolean = false;
+  private lastRender: { base64Data: string; format: ModelFormat } | undefined;
 
   constructor(
     panel: WebviewPanel,
@@ -123,6 +124,7 @@ export class ScadWebviewPanel {
         }
 
         const base64Data = buffer.toString("base64");
+        this.lastRender = { base64Data, format };
         this.postMessage({
           type: "update",
           content: base64Data,
@@ -227,7 +229,7 @@ export class ScadWebviewPanel {
     const overrides = this.session.currentOverrides;
     const parameterSets = this.session.currentParameterSets;
     const activeSetName = this.session.activeSetName;
-    
+
     if (params && params.length > 0) {
       this.postMessage({
         type: "updateParameters",
@@ -235,6 +237,18 @@ export class ScadWebviewPanel {
         parameterSets,
         activeSetName,
         overrides,
+      });
+    }
+
+    // Re-send the last completed render so the model is visible immediately,
+    // both when the tab first loads (race condition where the render may have
+    // completed before the webview was ready) and on tab re-focus (where
+    // VSCode destroys and recreates the webview content).
+    if (this.lastRender) {
+      this.postMessage({
+        type: "update",
+        content: this.lastRender.base64Data,
+        format: this.lastRender.format,
       });
     }
   }
