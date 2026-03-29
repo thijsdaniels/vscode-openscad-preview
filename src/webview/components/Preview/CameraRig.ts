@@ -42,6 +42,10 @@ export class CameraRig {
     return this.controls;
   }
 
+  public getPerspectiveCamera(): PerspectiveCamera {
+    return this.persCamera;
+  }
+
   public setMode(mode: CameraMode) {
     this.activeCamera =
       mode === CameraMode.Orthographic ? this.orthCamera : this.persCamera;

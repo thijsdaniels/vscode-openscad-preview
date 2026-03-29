@@ -17,22 +17,13 @@ export enum CameraMode {
   Orthographic = "orthographic",
 }
 
-export enum ShadowMode {
-  Off = "off",
-  On = "on",
-}
-
-export enum ColorMode {
-  Off = "off",
-  On = "on",
-}
-
 export interface ViewSettings {
   environment: Environment;
   renderMode: RenderMode;
   camera: CameraMode;
-  shadows: ShadowMode;
-  colors: ColorMode;
+  shadows: boolean;
+  colors: boolean;
+  crossSection: boolean;
 }
 
 export interface ViewSettingsContext {

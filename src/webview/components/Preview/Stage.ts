@@ -18,12 +18,12 @@ import { ModelFormat } from "../../../shared/types/ModelFormat";
 import { ModelContext } from "../../contexts/ModelContext";
 import {
   Environment,
-  ShadowMode,
   ViewSettingsContext,
 } from "../../contexts/ViewSettingsContext";
 import { SnappingMode } from "../../contexts/MeasurementContext";
 import { AxesWidget } from "./AxesWidget";
 import { CameraRig } from "./CameraRig";
+import { CrossSectionRig } from "./CrossSectionRig";
 import { EnvironmentRig } from "./EnvironmentRig";
 import { LightRig } from "./LightRig";
 import { MaterialManager } from "./MaterialManager";
@@ -37,6 +37,7 @@ export interface Theme {
   plateGrid: Color;
   additive: Color;
   subtractive: Color;
+  accent: Color;
 }
 
 export class Stage {
@@ -51,9 +52,12 @@ export class Stage {
 
   private modelGroup: Group;
   private axesWidget: AxesWidget;
+  private crossSectionRig: CrossSectionRig;
   private viewSettings?: ViewSettingsContext;
 
   private animationFrameId: number | null = null;
+  private pointerDownX = 0;
+  private pointerDownY = 0;
   private theme: Theme;
 
   // Measurement tool properties
@@ -91,7 +95,7 @@ export class Stage {
 
     // 2. Initialize DOM Renderer
     const { clientWidth: width, clientHeight: height } = container;
-    this.renderer = new WebGLRenderer({ antialias: true });
+    this.renderer = new WebGLRenderer({ antialias: true, stencil: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(width || 1, height || 1);
     this.renderer.shadowMap.enabled = true;
@@ -112,11 +116,40 @@ export class Stage {
     this.measurementGroup = new Group();
     this.scene.add(this.measurementGroup);
     this.axesWidget = new AxesWidget(container);
+    this.crossSectionRig = new CrossSectionRig(
+      this.cameraRig.getPerspectiveCamera(),
+      this.renderer.domElement,
+      this.theme.accent,
+    );
+    this.scene.add(this.crossSectionRig.group);
+    this.crossSectionRig.resize(width || 1, height || 1);
 
-    // 5. Setup measurement tool event listeners
+    // Disable orbit while the transform gizmo is being dragged.
+    this.crossSectionRig.transformControls.addEventListener(
+      "dragging-changed",
+      (event) => {
+        this.cameraRig.getControls().enabled = !(
+          event as unknown as { value: boolean }
+        ).value;
+      },
+    );
+
+    // 5. Input handlers
+    this.renderer.domElement.addEventListener("click", this.handleCanvasClick);
+    this.renderer.domElement.addEventListener(
+      "pointerdown",
+      this.handlePointerDown,
+    );
+    this.renderer.domElement.addEventListener(
+      "pointermove",
+      this.handlePointerMove,
+    );
+    document.addEventListener("keydown", this.handleKeyDown);
+
+    // 6. Setup measurement tool event listeners
     this.setupMeasurementListeners();
 
-    // 6. Kickoff
+    // 7. Kickoff
     this.startAnimationLoop();
   }
 
@@ -124,6 +157,22 @@ export class Stage {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
+
+    this.renderer.domElement.removeEventListener(
+      "click",
+      this.handleCanvasClick,
+    );
+    this.renderer.domElement.removeEventListener(
+      "pointerdown",
+      this.handlePointerDown,
+    );
+    this.renderer.domElement.removeEventListener(
+      "pointermove",
+      this.handlePointerMove,
+    );
+    document.removeEventListener("keydown", this.handleKeyDown);
+
+    this.crossSectionRig.dispose();
 
     this.renderer.domElement.removeEventListener(
       "mousemove",
@@ -147,12 +196,14 @@ export class Stage {
     this.scene.background = theme.background;
     this.scene.fog = new FogExp2(theme.fog, 0.001);
     this.environmentRig.setTheme(theme);
+    this.crossSectionRig.setTheme(theme);
   }
 
   public resize(width: number, height: number) {
     if (width === 0 || height === 0) return;
     this.renderer.setSize(width, height);
     this.cameraRig.resize(width, height);
+    this.crossSectionRig.resize(width, height);
     // Render immediately to fill the canvas before the browser paints.
     // Changing canvas width/height attributes clears it, and the animation
     // loop only re-renders on the next RAF — causing a one-frame flicker.
@@ -164,8 +215,12 @@ export class Stage {
 
     this.environmentRig.setEnvironment(viewSettings.get("environment"));
     this.cameraRig.setMode(viewSettings.get("camera"));
-    this.renderer.shadowMap.enabled = viewSettings.is("shadows", ShadowMode.On);
+    this.renderer.shadowMap.enabled = viewSettings.get("shadows");
     this.materialManager.applyToGroup(this.modelGroup, viewSettings);
+
+    const crossSectionEnabled = viewSettings.get("crossSection");
+    this.renderer.localClippingEnabled = crossSectionEnabled;
+    this.crossSectionRig.setEnabled(crossSectionEnabled, this.modelGroup);
   }
 
   public loadModelData(modelState: ModelContext) {
@@ -238,13 +293,51 @@ export class Stage {
         console.error("Failed to parse STL:", e);
       }
     }
+
+    // Re-center the cross-section pivot and rebuild stencil meshes for new geometry.
+    this.crossSectionRig.rebuildForModel(this.modelGroup);
   }
 
   private startAnimationLoop = () => {
     this.animationFrameId = requestAnimationFrame(this.startAnimationLoop);
     this.cameraRig.update();
     this.axesWidget.update(this.cameraRig.activeCamera);
+    this.crossSectionRig.update();
     this.renderer.render(this.scene, this.cameraRig.activeCamera);
+  };
+
+  private handleCanvasClick = (e: MouseEvent) => {
+    const dx = e.clientX - this.pointerDownX;
+    const dy = e.clientY - this.pointerDownY;
+    if (dx * dx + dy * dy > 9) return; // ignore drag-release as a click (>3px)
+
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    this.crossSectionRig.handleClick(
+      new Vector2(x, y),
+      this.cameraRig.activeCamera,
+    );
+  };
+
+  private handlePointerDown = (e: PointerEvent) => {
+    this.pointerDownX = e.clientX;
+    this.pointerDownY = e.clientY;
+  };
+
+  private handlePointerMove = (e: PointerEvent) => {
+    this.crossSectionRig.setSnap(e.ctrlKey);
+  };
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case "w":
+        this.crossSectionRig.setTransformMode("translate");
+        break;
+      case "e":
+        this.crossSectionRig.setTransformMode("rotate");
+        break;
+    }
   };
 
   // ============= Measurement Tool Methods =============

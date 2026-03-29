@@ -18,6 +18,7 @@ An integrated, interactive 3D preview environment for OpenSCAD (`.scad`) files b
 - **Render Modes:** Swap between solid, x-ray (translucent), and wireframe rendering.
 - **Colors:** Although color declarations in your code are respected, you can toggle them globally, allowing you to switch between a colored and monochrome preview.
 - **Lighting:** The scene includes both ambient and directional lighting, with togglable dynamic shadows.
+- **Cross Section:** Slice through your model with an interactive cutting plane. Click the plane to select it, then use **W** to translate or **E** to rotate. Hold **Ctrl** while dragging to snap to 1 mm / 5° increments. Click anywhere outside the plane to deselect it.
 
 > The preview is rendered using [Three.js](https://threejs.org/), so many additions are possible in the future. [Let me know](https://github.com/thijsdaniels/vscode-openscad-preview/issues) if you have any suggestions!
 

@@ -285,6 +285,10 @@ function getTheme(): Theme {
     styles.getPropertyValue("--vscode-editor-foreground").trim(),
   );
 
+  const accent = new Color(
+    styles.getPropertyValue("--vscode-button-background").trim(),
+  );
+
   return {
     background,
     fog,
@@ -294,6 +298,7 @@ function getTheme(): Theme {
     plateGrid,
     additive,
     subtractive,
+    accent,
   };
 }
 

@@ -8,68 +8,68 @@ import {
 } from "../contexts/MeasurementContext";
 import {
   CameraMode,
-  ColorMode,
   Environment,
   RenderMode,
-  ShadowMode,
   ViewSettings,
   ViewSettingsContext,
   viewSettingsContext,
 } from "../contexts/ViewSettingsContext";
 import "./MaterialSymbol";
 
-interface ToolbarButton<T extends string> {
+interface MultiStateButton<T extends string> {
+  type: "select";
   states: T[];
   icons: Record<T, string>;
-  defaultState: T;
 }
 
+interface ToggleButton {
+  type: "boolean";
+  icon: string;
+  title: string;
+}
+
+type ViewSettingsButton<K extends keyof ViewSettings> =
+  ViewSettings[K] extends string
+    ? MultiStateButton<ViewSettings[K]>
+    : ToggleButton;
+
 type ViewSettingsButtons = {
-  [K in keyof ViewSettings]: ToolbarButton<ViewSettings[K]>;
+  [K in keyof ViewSettings]: ViewSettingsButton<K>;
 };
 
 const viewSettingsButtons: ViewSettingsButtons = {
   camera: {
+    type: "select",
     states: [CameraMode.Perspective, CameraMode.Orthographic],
     icons: {
       [CameraMode.Perspective]: "device-camera",
       [CameraMode.Orthographic]: "symbol-method",
     },
-    defaultState: CameraMode.Perspective,
   },
   environment: {
+    type: "select",
     states: [Environment.None, Environment.Grid, Environment.BuildPlate],
     icons: {
       [Environment.None]: "eye-closed",
       [Environment.Grid]: "symbol-numeric",
       [Environment.BuildPlate]: "primitive-square",
     },
-    defaultState: Environment.Grid,
   },
   renderMode: {
+    type: "select",
     states: [RenderMode.Solid, RenderMode.XRay, RenderMode.Wireframe],
     icons: {
       [RenderMode.Solid]: "circle-large-filled",
       [RenderMode.XRay]: "color-mode",
       [RenderMode.Wireframe]: "circle-slash",
     },
-    defaultState: RenderMode.Solid,
   },
-  colors: {
-    states: [ColorMode.On, ColorMode.Off],
-    icons: {
-      [ColorMode.On]: "symbol-color",
-      [ColorMode.Off]: "paintcan",
-    },
-    defaultState: ColorMode.On,
-  },
-  shadows: {
-    states: [ShadowMode.Off, ShadowMode.On],
-    icons: {
-      [ShadowMode.Off]: "circle-large",
-      [ShadowMode.On]: "color-mode",
-    },
-    defaultState: ShadowMode.On,
+  colors: { type: "boolean", icon: "symbol-color", title: "Toggle Colors" },
+  shadows: { type: "boolean", icon: "color-mode", title: "Toggle Shadows" },
+  crossSection: {
+    type: "boolean",
+    icon: "split-horizontal",
+    title: "Toggle Cross Section",
   },
 };
 
@@ -107,6 +107,12 @@ export class PreviewToolbar extends LitElement {
       align-items: center;
       gap: 0.25rem;
     }
+
+    .toolbar-separator {
+      width: 1px;
+      height: 1.25rem;
+      background: var(--vscode-panel-border);
+    }
   `;
 
   @consume({ context: panelContext, subscribe: true })
@@ -126,24 +132,40 @@ export class PreviewToolbar extends LitElement {
       <div class="toolbar-section">
         <div class="toolbar-options">
           ${mapObject(viewSettingsButtons, ([key, button]) => {
-            return html`
-              <div class="toolbar-option">
-                ${button.states.map((state) => {
-                  const currentValue = this.viewSettings.get(key);
-                  const isActive = currentValue === state;
-
-                  return html`
-                    <vscode-toolbar-button
-                      toggleable
-                      .checked=${isActive}
-                      title=${`${key}: ${state}`}
-                      icon=${button.icons[state as keyof typeof button.icons]}
-                      @change=${() => this.viewSettings.set(key, state)}
-                    ></vscode-toolbar-button>
-                  `;
-                })}
-              </div>
-            `;
+            const k = key as keyof ViewSettings;
+            if (button.type === "select") {
+              return html`
+                <div class="toolbar-option">
+                  ${button.states.map((s) => {
+                    const isActive = this.viewSettings.get(k) === s;
+                    return html`
+                      <vscode-toolbar-button
+                        toggleable
+                        .checked=${isActive}
+                        title=${`${String(k)}: ${s}`}
+                        icon=${(button.icons as Record<string, string>)[s]}
+                        @change=${() =>
+                          this.viewSettings.set(k, s as ViewSettings[typeof k])}
+                      ></vscode-toolbar-button>
+                    `;
+                  })}
+                </div>
+              `;
+            } else {
+              return html`
+                <vscode-toolbar-button
+                  toggleable
+                  .checked=${this.viewSettings.get(k)}
+                  title=${button.title}
+                  icon=${button.icon}
+                  @change=${() =>
+                    this.viewSettings.set(
+                      k,
+                      !this.viewSettings.get(k) as ViewSettings[typeof k],
+                    )}
+                ></vscode-toolbar-button>
+              `;
+            }
           })}
         </div>
       </div>

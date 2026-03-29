@@ -37,8 +37,8 @@ export class AxesWidget {
     this.scene.add(axesHelper);
 
     this.addLabel("X", new Vector3(2.5, 0, 0), "#ff0000");
-    this.addLabel("Y", new Vector3(0, 2.5, 0), "#00ff00");
-    this.addLabel("Z", new Vector3(0, 0, 2.5), "#0000ff");
+    this.addLabel("Z", new Vector3(0, 2.5, 0), "#00ff00");
+    this.addLabel("Y", new Vector3(0, 0, 2.5), "#0000ff");
   }
 
   private addLabel(text: string, position: Vector3, color: string) {

@@ -1,5 +1,11 @@
 # vscode-openscad-preview
 
+## 0.4.0
+
+### Minor Changes
+
+- 807e7fd: An interactive cross-section has been added.
+
 ## 0.3.0
 
 ### Minor Changes

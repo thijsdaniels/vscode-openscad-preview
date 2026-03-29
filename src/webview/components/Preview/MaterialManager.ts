@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Group, Mesh } from "three";
 import {
-  ColorMode,
   RenderMode,
-  ShadowMode,
   ViewSettingsContext,
 } from "../../contexts/ViewSettingsContext";
 
@@ -11,8 +9,8 @@ export class MaterialManager {
   public applyToGroup(group: Group, settings: ViewSettingsContext) {
     group.traverse((child) => {
       if (child instanceof Mesh) {
-        child.castShadow = settings.is("shadows", ShadowMode.On);
-        child.receiveShadow = settings.is("shadows", ShadowMode.On);
+        child.castShadow = settings.get("shadows");
+        child.receiveShadow = settings.get("shadows");
         this.applyToMesh(child, settings);
       }
     });
@@ -49,7 +47,7 @@ export class MaterialManager {
             : mat.userData.originalFlatShading;
         }
 
-        if (!viewSettings.is("colors", ColorMode.On)) {
+        if (!viewSettings.get("colors")) {
           if (mat.userData.originalColor === undefined && (mat as any).color) {
             mat.userData.originalColor = (mat as any).color.clone();
             mat.userData.originalVertexColors = (mat as any).vertexColors;
