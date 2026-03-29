@@ -4,6 +4,7 @@ export interface Panels {
   toolbar: boolean;
   parameters: boolean;
   debug: boolean;
+  measurement: boolean;
 }
 
 export interface PanelContext {

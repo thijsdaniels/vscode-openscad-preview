@@ -4,6 +4,10 @@ import { customElement, query, state } from "lit/decorators.js";
 import { Color } from "three";
 import { modelContext, ModelContext } from "../../contexts/ModelContext";
 import {
+  measurementContext,
+  MeasurementContext,
+} from "../../contexts/MeasurementContext";
+import {
   viewSettingsContext,
   ViewSettingsContext,
 } from "../../contexts/ViewSettingsContext";
@@ -82,6 +86,10 @@ export class Preview extends LitElement {
   @state()
   modelContext!: ModelContext;
 
+  @consume({ context: measurementContext, subscribe: true })
+  @state()
+  measurementContext!: MeasurementContext;
+
   @query("#canvas-container")
   private container!: HTMLElement;
 
@@ -98,6 +106,20 @@ export class Preview extends LitElement {
 
   initStage() {
     this.stage = new Stage(this.container, this.theme);
+
+    // Setup measurement callbacks
+    this.stage.setMeasurementCallbacks(
+      (point) => this.measurementContext.setHoveredPoint(point),
+      (point) => {
+        if (!point) return;
+        const { nextPointToSet } = this.measurementContext.measurement;
+        if (nextPointToSet === "A") {
+          this.measurementContext.setPointA(point);
+        } else {
+          this.measurementContext.setPointB(point);
+        }
+      },
+    );
 
     // Process any state that arrived before initialization
     if (this.viewSettingsContext) {
@@ -129,6 +151,25 @@ export class Preview extends LitElement {
 
     if (changedProperties.has("modelContext") && this.modelContext) {
       this.stage.loadModelData(this.modelContext);
+    }
+
+    if (
+      changedProperties.has("measurementContext") &&
+      this.measurementContext
+    ) {
+      this.stage.setMeasurementEnabled(this.measurementContext.isActive);
+      this.stage.setMeasurementSnappingMode(
+        this.measurementContext.snappingMode,
+      );
+      this.stage.setMeasurementPointA(
+        this.measurementContext.measurement.pointA,
+      );
+      this.stage.setMeasurementPointB(
+        this.measurementContext.measurement.pointB,
+      );
+      this.stage.setMeasurementPointHovered(
+        this.measurementContext.measurement.hoveredPoint,
+      );
     }
   }
 

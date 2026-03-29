@@ -3,6 +3,10 @@ import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { PanelContext, panelContext } from "../contexts/PanelContext";
 import {
+  measurementContext,
+  MeasurementContext,
+} from "../contexts/MeasurementContext";
+import {
   CameraMode,
   ColorMode,
   Environment,
@@ -113,6 +117,10 @@ export class PreviewToolbar extends LitElement {
   @state()
   viewSettings!: ViewSettingsContext;
 
+  @consume({ context: measurementContext, subscribe: true })
+  @state()
+  measurementSettings!: MeasurementContext;
+
   render() {
     return html`
       <div class="toolbar-section">
@@ -140,6 +148,22 @@ export class PreviewToolbar extends LitElement {
         </div>
       </div>
       <div class="toolbar-section">
+        <vscode-toolbar-button
+          icon="symbol-ruler"
+          title="Measurement Tool"
+          toggleable
+          .checked=${this.measurementSettings.isActive}
+          @change=${() => {
+            const newActive = !this.measurementSettings.isActive;
+            this.measurementSettings.setActive(newActive);
+            // Also toggle the measurement panel
+            if (newActive && !this.panelContext.panels.measurement) {
+              this.panelContext.toggle("measurement");
+            } else if (!newActive && this.panelContext.panels.measurement) {
+              this.panelContext.toggle("measurement");
+            }
+          }}
+        ></vscode-toolbar-button>
         <vscode-toolbar-button
           icon="output"
           title="Toggle Log"

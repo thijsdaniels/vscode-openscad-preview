@@ -10,6 +10,11 @@ import {
   ParameterContext,
 } from "../contexts/ParameterContext";
 import {
+  measurementContext,
+  MeasurementContext,
+  SnappingMode,
+} from "../contexts/MeasurementContext";
+import {
   CameraMode,
   ColorMode,
   Environment,
@@ -20,6 +25,7 @@ import {
 } from "../contexts/ViewSettingsContext";
 import { bridge } from "../services/Bridge";
 import "./Debug";
+import "./Measurement";
 import "./Parameters";
 import "./Preview";
 import "./Toolbar";
@@ -51,6 +57,7 @@ export class App extends LitElement {
       toolbar: true,
       parameters: true,
       debug: false,
+      measurement: false,
     },
     toggle: (panel: keyof PanelContext["panels"]) => {
       this.panelContext = {
@@ -129,6 +136,10 @@ export class App extends LitElement {
     sendToSlicer: bridge.sendToSlicer,
   };
 
+  @provide({ context: measurementContext })
+  @state()
+  measurementContextValue: MeasurementContext = this.initMeasurementContext();
+
   private logController = new LogController(this);
 
   private unsubscribe: (() => void) | null = null;
@@ -187,20 +198,109 @@ export class App extends LitElement {
     }
   };
 
+  private initMeasurementContext(): MeasurementContext {
+    return {
+      isActive: false,
+      snappingMode: SnappingMode.Vertex,
+      measurement: {
+        pointA: null,
+        pointB: null,
+        deltaX: null,
+        deltaY: null,
+        deltaZ: null,
+        distance: null,
+        hoveredPoint: null,
+        nextPointToSet: "A",
+      },
+      setActive: (active: boolean) => {
+        this.measurementContextValue = {
+          ...this.measurementContextValue,
+          isActive: active,
+        };
+      },
+      setSnappingMode: (mode: SnappingMode) => {
+        this.measurementContextValue = {
+          ...this.measurementContextValue,
+          snappingMode: mode,
+        };
+      },
+      setPointA: (point) => {
+        this.updateMeasurement({ pointA: point, nextPointToSet: "B" });
+      },
+      setPointB: (point) => {
+        this.updateMeasurement({ pointB: point, nextPointToSet: "A" });
+      },
+      setHoveredPoint: (point) => {
+        this.updateMeasurement({ hoveredPoint: point });
+      },
+      reset: () => {
+        this.updateMeasurement({
+          pointA: null,
+          pointB: null,
+          deltaX: null,
+          deltaY: null,
+          deltaZ: null,
+          distance: null,
+          hoveredPoint: null,
+          nextPointToSet: "A",
+        });
+      },
+    };
+  }
+
+  private updateMeasurement(
+    updates: Partial<typeof this.measurementContextValue.measurement>,
+  ) {
+    const current = this.measurementContextValue.measurement;
+    const updated = { ...current, ...updates };
+
+    // Calculate distances if both points are set
+    if (updated.pointA && updated.pointB) {
+      updated.deltaX = updated.pointB.x - updated.pointA.x;
+      updated.deltaY = updated.pointB.y - updated.pointA.y;
+      updated.deltaZ = updated.pointB.z - updated.pointA.z;
+      updated.distance = Math.sqrt(
+        updated.deltaX ** 2 + updated.deltaY ** 2 + updated.deltaZ ** 2,
+      );
+    } else {
+      updated.deltaX = null;
+      updated.deltaY = null;
+      updated.deltaZ = null;
+      updated.distance = null;
+    }
+
+    this.measurementContextValue = {
+      ...this.measurementContextValue,
+      measurement: updated,
+    };
+  }
+
   render() {
     return html`
       ${this.withBottomPanel(
         this.withToolbar(
           this.withRightPanel(
             html`<scad-preview></scad-preview>`,
-            this.panelContext.panels.parameters
-              ? html`<scad-parameters></scad-parameters>`
-              : null,
+            this.getRightPanelContent(),
           ),
         ),
         this.panelContext.panels.debug ? html`<scad-debug></scad-debug>` : null,
       )}
     `;
+  }
+
+  private getRightPanelContent(): TemplateResult | null {
+    // If measurement is active, show measurement panel
+    if (this.panelContext.panels.measurement) {
+      return html`<scad-measurement></scad-measurement>`;
+    }
+
+    // Otherwise show parameters if enabled
+    if (this.panelContext.panels.parameters) {
+      return html`<scad-parameters></scad-parameters>`;
+    }
+
+    return null;
   }
 
   private withBottomPanel(main: TemplateResult, bottom: TemplateResult | null) {
