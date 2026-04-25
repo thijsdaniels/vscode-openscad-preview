@@ -51,6 +51,14 @@ export class ScadClient {
     return "openscad";
   }
 
+  private static get enableLazyUnion(): string[] {
+    const setting = workspace
+      .getConfiguration("openscad")
+      .get<boolean>("enableLazyUnion", false);
+
+    return setting ? ["--enable", "lazy-union"] : [];
+  }
+
   public static async render(
     scadPath: string,
     parameters: Record<string, string | number | boolean> = {},
@@ -79,6 +87,7 @@ export class ScadClient {
       const process = spawn(ScadClient.executablePath, [
         "--export-format",
         format,
+        ...this.enableLazyUnion,
         "-o",
         tmpFile,
         ...paramArgs,
