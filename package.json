@@ -38,7 +38,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.x",
+    "@types/node": "^25.0",
     "@types/three": "^0.183.1",
     "@types/vscode": "^1.105.1",
     "@types/vscode-webview": "^1.57.5",
@@ -76,6 +76,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the OpenSCAD executable. Leave empty to use automatic detection or the system PATH."
+        },
+        "openscad.enableLazyUnion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable lazy unions, creating a multi-part exported object."
         }
       }
     },
