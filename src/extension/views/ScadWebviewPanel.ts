@@ -1,5 +1,6 @@
 import {
   Disposable,
+  Memento,
   ProgressLocation,
   Uri,
   Webview,
@@ -22,10 +23,15 @@ export class ScadWebviewPanel {
   private isWebviewReady: boolean = false;
   private lastRender: { base64Data: string; format: ModelFormat } | undefined;
 
+  private get sceneStateKey(): string {
+    return `openscad.scene.${this.session.documentUri.toString()}`;
+  }
+
   constructor(
     panel: WebviewPanel,
     private readonly extensionUri: Uri,
     private readonly session: ScadSession,
+    private readonly workspaceState: Memento,
   ) {
     this.panel = panel;
 
@@ -89,6 +95,9 @@ export class ScadWebviewPanel {
             return;
           case "sendToSlicer":
             this.sendToSlicer();
+            return;
+          case "persistScene":
+            this.workspaceState.update(this.sceneStateKey, message.snapshot);
             return;
           case "error":
             window.showErrorMessage(`Preview Error: ${message.message}`);
@@ -224,6 +233,12 @@ export class ScadWebviewPanel {
   }
 
   private pushInitialState() {
+    // Send the persisted scene snapshot first so the webview can hydrate
+    // before any other state arrives. `null` means "no saved scene" — the
+    // webview falls back to its built-in default scene.
+    const snapshot = this.workspaceState.get<unknown>(this.sceneStateKey, null);
+    this.postMessage({ type: "loadScene", snapshot });
+
     // Send initial parameters
     const params = this.session.currentParameters;
     const overrides = this.session.currentOverrides;

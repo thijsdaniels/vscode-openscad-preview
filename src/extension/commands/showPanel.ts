@@ -57,6 +57,7 @@ export function registerShowPanelCommand(
       webviewPanel,
       context.extensionUri,
       session,
+      context.workspaceState,
     );
 
     activePanels.set(key, scadPreviewPanel);

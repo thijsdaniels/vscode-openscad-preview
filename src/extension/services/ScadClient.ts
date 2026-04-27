@@ -12,6 +12,8 @@ const platformDefaults: Record<string, string[]> = {
   win32: [
     "C:\\Program Files\\OpenSCAD\\openscad.exe",
     "C:\\Program Files (x86)\\OpenSCAD\\openscad.exe",
+    "C:\\Program Files\\OpenSCAD (Nightly)\\openscad.exe",
+    "C:\\Program Files (x86)\\OpenSCAD (Nightly)\\openscad.exe",
   ],
   linux: ["/usr/bin/openscad", "/usr/local/bin/openscad"],
 };

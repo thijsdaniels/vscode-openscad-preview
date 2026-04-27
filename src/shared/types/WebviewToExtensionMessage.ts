@@ -11,4 +11,5 @@ export type WebviewToExtensionMessage =
   | { type: "applyParameterSet"; name: string | undefined }
   | { type: "exportModel" }
   | { type: "sendToSlicer" }
+  | { type: "persistScene"; snapshot: unknown }
   | { type: "error"; message: string };

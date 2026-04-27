@@ -1,10 +1,8 @@
 import { createContext } from "@lit/context";
 
 export interface Panels {
-  toolbar: boolean;
-  parameters: boolean;
-  debug: boolean;
-  measurement: boolean;
+  sidePanel: boolean;
+  bottomPanel: boolean;
 }
 
 export interface PanelContext {

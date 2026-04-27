@@ -17,4 +17,5 @@ export type ExtensionToWebviewMessage =
       overrides: Record<string, string | number | boolean>;
     }
   | { type: "error"; message: string }
-  | { type: "log"; message: string };
+  | { type: "log"; message: string }
+  | { type: "loadScene"; snapshot: unknown | null };

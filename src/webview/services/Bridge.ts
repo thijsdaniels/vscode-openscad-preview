@@ -60,6 +60,10 @@ export class Bridge {
     vscode.postMessage({ type: "sendToSlicer" });
   }
 
+  public persistScene(snapshot: unknown) {
+    vscode.postMessage({ type: "persistScene", snapshot });
+  }
+
   public reportError(error: unknown) {
     console.error("[OpenSCAD Preview]", error);
     vscode.postMessage({

@@ -25,6 +25,7 @@ const webviewConfig: BuildOptions = {
   format: "esm",
   loader: {
     ".stl": "binary",
+    ".glsl": "text",
   },
 };
 

@@ -1,5 +1,5 @@
 import { FSWatcher, watch } from "chokidar";
-import { readFile } from "fs/promises";
+import { readFile, access } from "fs/promises";
 
 /**
  * Observes a file for changes and notifies a callback with the file's new
@@ -37,6 +37,11 @@ export class FileWatcher {
   }
 
   private async handleFileChange(path: string) {
+    try {
+      await access(path);
+    } catch {
+      return;
+    }
     const content = await readFile(path, "utf8");
     this.onChange({ content });
   }

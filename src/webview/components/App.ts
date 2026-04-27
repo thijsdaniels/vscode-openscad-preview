@@ -1,32 +1,47 @@
 import { provide } from "@lit/context";
-import { css, html, LitElement, TemplateResult } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { css, html, LitElement, nothing } from "lit";
+import { customElement, query, state } from "lit/decorators.js";
+import { Preview } from "./main/Preview";
 import { ExtensionToWebviewMessage } from "../../shared/types/ExtensionToWebviewMessage";
+import {
+  ActiveTool,
+  activeToolContext,
+  ActiveToolContext,
+} from "../contexts/ActiveToolContext";
 import { modelContext, ModelContext } from "../contexts/ModelContext";
-import { LogController } from "../controllers/LogController";
 import { PanelContext, panelContext } from "../contexts/PanelContext";
 import {
   parameterContext,
   ParameterContext,
 } from "../contexts/ParameterContext";
 import {
-  measurementContext,
-  MeasurementContext,
-  SnappingMode,
-} from "../contexts/MeasurementContext";
+  SceneContext,
+  SceneObjectType,
+  SceneSnapshot,
+  sceneContext,
+} from "../contexts/SceneContext";
+import {
+  ObjectProperties,
+  SelectedObjectContext,
+  selectedObjectContext,
+} from "../contexts/SelectedObjectContext";
 import {
   CameraMode,
   Environment,
   RenderMode,
-  viewSettingsContext,
-  ViewSettingsContext,
-} from "../contexts/ViewSettingsContext";
+  ViewOptionsContext,
+  viewOptionsContext,
+} from "../contexts/ViewOptionsContext";
+import { LogController } from "../controllers/LogController";
 import { bridge } from "../services/Bridge";
-import "./Debug";
-import "./Measurement";
-import "./Parameters";
-import "./Preview";
-import "./Toolbar";
+import { defaultScene } from "../data/defaultScene";
+import { sceneObjectMeta } from "../data/sceneObjectMeta";
+import "./aside/SidePanel";
+import "./atoms/SplitLayout";
+import "./footer/Output";
+import "./main/Options";
+import "./main/Preview";
+import "./main/Toolbar";
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -52,10 +67,8 @@ export class App extends LitElement {
   @state()
   private panelContext: PanelContext = {
     panels: {
-      toolbar: true,
-      parameters: true,
-      debug: false,
-      measurement: false,
+      sidePanel: true,
+      bottomPanel: false,
     },
     toggle: (panel: keyof PanelContext["panels"]) => {
       this.panelContext = {
@@ -68,27 +81,26 @@ export class App extends LitElement {
     },
   };
 
-  @state() private parameterPanelSize: string = `${window.innerWidth - 240}px`;
+  @state() private parameterPanelSize: string = `${window.innerWidth - 280}px`;
   @state() private debugPanelSize: string = `${window.innerHeight - 240}px`;
 
-  @provide({ context: viewSettingsContext })
+  @provide({ context: viewOptionsContext })
   @state()
-  viewSettingsContext: ViewSettingsContext = {
-    settings: {
+  viewSettingsContext: ViewOptionsContext = {
+    options: {
       environment: Environment.Grid,
       renderMode: RenderMode.Solid,
       camera: CameraMode.Perspective,
-      shadows: true,
-      colors: true,
-      crossSection: false,
+      shadows: false,
+      fogDensity: 0,
     },
-    get: (key) => this.viewSettingsContext.settings[key],
-    is: (key, value) => this.viewSettingsContext.settings[key] === value,
+    get: (key) => this.viewSettingsContext.options[key],
+    is: (key, value) => this.viewSettingsContext.options[key] === value,
     set: (key, value) => {
       this.viewSettingsContext = {
         ...this.viewSettingsContext,
-        settings: {
-          ...this.viewSettingsContext.settings,
+        options: {
+          ...this.viewSettingsContext.options,
           [key]: value,
         },
       };
@@ -135,18 +147,235 @@ export class App extends LitElement {
     sendToSlicer: bridge.sendToSlicer,
   };
 
-  @provide({ context: measurementContext })
+  @provide({ context: activeToolContext })
   @state()
-  measurementContextValue: MeasurementContext = this.initMeasurementContext();
+  activeToolContextValue: ActiveToolContext = {
+    activeTool: ActiveTool.Select,
+    variant: null,
+    setActiveTool: (tool: ActiveTool, variant?: string | null) => {
+      this.activeToolContextValue = {
+        ...this.activeToolContextValue,
+        activeTool: tool,
+        variant: variant ?? null,
+      };
+    },
+    setVariant: (variant: string) => {
+      this.activeToolContextValue = {
+        ...this.activeToolContextValue,
+        variant,
+      };
+    },
+  };
+
+  @provide({ context: sceneContext })
+  @state()
+  sceneContextValue: SceneContext = {
+    objects: defaultScene,
+    selectedId: null,
+    activeCameraId: "camera-default",
+    addObject: (type: SceneObjectType) => {
+      const id = `${type}-${Date.now()}`;
+
+      const count =
+        this.sceneContextValue.objects.filter((o) => o.type === type).length +
+        1;
+
+      const name = `${sceneObjectMeta[type].label} ${count}`;
+
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: [
+          ...this.sceneContextValue.objects,
+          { id, type, name, visible: true, active: true },
+        ],
+      };
+
+      this.previewEl?.stage?.addSceneObject(type, id);
+      this.schedulePersist();
+    },
+    removeObject: (id: string) => {
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: this.sceneContextValue.objects.filter((o) => o.id !== id),
+        selectedId:
+          this.sceneContextValue.selectedId === id
+            ? null
+            : this.sceneContextValue.selectedId,
+      };
+
+      this.previewEl?.stage?.removeSceneObject(id);
+      this.schedulePersist();
+    },
+    selectObject: (id: string | null) => {
+      this.sceneContextValue = { ...this.sceneContextValue, selectedId: id };
+      this.previewEl?.stage?.selectObject(id);
+    },
+    renameObject: (id: string, name: string) => {
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: this.sceneContextValue.objects.map((o) =>
+          o.id === id ? { ...o, name } : o,
+        ),
+      };
+      this.schedulePersist();
+    },
+    setVisible: (id: string, visible: boolean) => {
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: this.sceneContextValue.objects.map((o) =>
+          o.id === id ? { ...o, visible } : o,
+        ),
+      };
+
+      this.previewEl?.stage?.setObjectVisible(id, visible);
+      this.schedulePersist();
+    },
+    setActive: (id: string, active: boolean) => {
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: this.sceneContextValue.objects.map((o) =>
+          o.id === id ? { ...o, active } : o,
+        ),
+      };
+
+      this.previewEl?.stage?.setObjectActive(id, active);
+      this.schedulePersist();
+    },
+    setActiveCamera: (id: string) => {
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        activeCameraId: id,
+      };
+      this.previewEl?.stage?.setActiveCamera(id);
+      this.schedulePersist();
+    },
+  };
+
+  @provide({ context: selectedObjectContext })
+  @state()
+  selectedObjectContextValue: SelectedObjectContext = {
+    type: null,
+    properties: null,
+    setProperty: (key: string, value: number) => {
+      const id = this.sceneContextValue.selectedId;
+      if (id) this.previewEl?.stage?.setObjectProperty(id, key, value);
+    },
+  };
+
+  @query("scad-preview")
+  private previewEl?: Preview;
 
   private logController = new LogController(this);
 
   private unsubscribe: (() => void) | null = null;
 
+  /** True once the extension has answered our `ready` with a `loadScene`. */
+  private sceneLoaded = false;
+  /** Properties to apply per object id during the initial Stage replay. */
+  private pendingProperties: Map<string, ObjectProperties> | null = null;
+  private persistTimer: number | null = null;
+
   connectedCallback() {
     super.connectedCallback();
     this.unsubscribe = bridge.onMessage(this.handleMessage);
     bridge.ready();
+  }
+
+  private schedulePersist() {
+    if (this.persistTimer !== null) {
+      window.clearTimeout(this.persistTimer);
+    }
+    this.persistTimer = window.setTimeout(() => {
+      this.persistTimer = null;
+      this.persistScene();
+    }, 500);
+  }
+
+  private persistScene() {
+    if (!this.sceneLoaded) return;
+    const stage = this.previewEl?.stage;
+    if (!stage) return;
+    const properties = stage.serializeProperties();
+    const snapshot: SceneSnapshot = {
+      version: 1,
+      activeCameraId: this.sceneContextValue.activeCameraId,
+      objects: this.sceneContextValue.objects.map((o) => {
+        const props = properties.get(o.id);
+        return props ? { ...o, properties: props } : { ...o };
+      }),
+    };
+    bridge.persistScene(snapshot);
+  }
+
+  private _stageWired = false;
+
+  updated() {
+    if (!this._stageWired && this.previewEl?.stage && this.sceneLoaded) {
+      this._stageWired = true;
+      this.previewEl.stage.setSelectionCallbacks(
+        (id) => {
+          this.sceneContextValue = {
+            ...this.sceneContextValue,
+            selectedId: id,
+          };
+        },
+        (props) => {
+          this.selectedObjectContextValue = {
+            ...this.selectedObjectContextValue,
+            type: props?.type ?? null,
+            properties: props,
+          };
+          // Gizmo drag and Object Properties edits both flow through here.
+          // Debouncing absorbs per-frame drag updates into one persist write.
+          this.schedulePersist();
+        },
+      );
+      this.previewEl.stage.setPersistCallback(() => this.schedulePersist());
+      this.previewEl.stage.setObjectRegisteredCallback((id, type) => {
+        const count =
+          this.sceneContextValue.objects.filter((o) => o.type === type).length +
+          1;
+        this.sceneContextValue = {
+          ...this.sceneContextValue,
+          objects: [
+            ...this.sceneContextValue.objects,
+            {
+              id,
+              type,
+              name: `${sceneObjectMeta[type].label} ${count}`,
+              visible: true,
+              active: true,
+            },
+          ],
+          selectedId: id,
+        };
+      });
+      // Replay initial scene objects into Stage
+      for (const obj of this.sceneContextValue.objects) {
+        this.previewEl.stage.addSceneObject(obj.type, obj.id);
+
+        const props = this.pendingProperties?.get(obj.id);
+        if (props) {
+          for (const [key, value] of Object.entries(props)) {
+            if (key !== "type" && typeof value === "number") {
+              this.previewEl.stage.setObjectProperty(obj.id, key, value);
+            }
+          }
+        }
+
+        if (!obj.active) {
+          this.previewEl.stage.setObjectActive(obj.id, false);
+        }
+
+        if (!obj.visible) {
+          this.previewEl.stage.setObjectVisible(obj.id, false);
+        }
+      }
+      this.previewEl.stage.setActiveCamera(
+        this.sceneContextValue.activeCameraId,
+      );
+      this.pendingProperties = null;
+    }
   }
 
   disconnectedCallback() {
@@ -194,164 +423,83 @@ export class App extends LitElement {
           this.logController.processLogChunk(message.message);
         }
         break;
+      case "loadScene":
+        this.applySceneSnapshot(message.snapshot);
+        break;
     }
   };
 
-  private initMeasurementContext(): MeasurementContext {
-    return {
-      isActive: false,
-      snappingMode: SnappingMode.Vertex,
-      measurement: {
-        pointA: null,
-        pointB: null,
-        deltaX: null,
-        deltaY: null,
-        deltaZ: null,
-        distance: null,
-        hoveredPoint: null,
-        nextPointToSet: "A",
-      },
-      setActive: (active: boolean) => {
-        this.measurementContextValue = {
-          ...this.measurementContextValue,
-          isActive: active,
-        };
-      },
-      setSnappingMode: (mode: SnappingMode) => {
-        this.measurementContextValue = {
-          ...this.measurementContextValue,
-          snappingMode: mode,
-        };
-      },
-      setPointA: (point) => {
-        this.updateMeasurement({ pointA: point, nextPointToSet: "B" });
-      },
-      setPointB: (point) => {
-        this.updateMeasurement({ pointB: point, nextPointToSet: "A" });
-      },
-      setHoveredPoint: (point) => {
-        this.updateMeasurement({ hoveredPoint: point });
-      },
-      reset: () => {
-        this.updateMeasurement({
-          pointA: null,
-          pointB: null,
-          deltaX: null,
-          deltaY: null,
-          deltaZ: null,
-          distance: null,
-          hoveredPoint: null,
-          nextPointToSet: "A",
-        });
-      },
-    };
+  private applySceneSnapshot(snapshot: unknown) {
+    const parsed = this.parseSnapshot(snapshot);
+    if (parsed) {
+      const { properties, ...rest } = this.deconstructSnapshot(parsed);
+      this.pendingProperties = properties;
+      this.sceneContextValue = {
+        ...this.sceneContextValue,
+        objects: rest.objects,
+        activeCameraId: rest.activeCameraId,
+      };
+    }
+    this.sceneLoaded = true;
+    this.requestUpdate();
   }
 
-  private updateMeasurement(
-    updates: Partial<typeof this.measurementContextValue.measurement>,
-  ) {
-    const current = this.measurementContextValue.measurement;
-    const updated = { ...current, ...updates };
-
-    // Calculate distances if both points are set
-    if (updated.pointA && updated.pointB) {
-      updated.deltaX = updated.pointB.x - updated.pointA.x;
-      updated.deltaY = updated.pointB.y - updated.pointA.y;
-      updated.deltaZ = updated.pointB.z - updated.pointA.z;
-      updated.distance = Math.sqrt(
-        updated.deltaX ** 2 + updated.deltaY ** 2 + updated.deltaZ ** 2,
-      );
-    } else {
-      updated.deltaX = null;
-      updated.deltaY = null;
-      updated.deltaZ = null;
-      updated.distance = null;
+  private parseSnapshot(snapshot: unknown): SceneSnapshot | null {
+    if (!snapshot || typeof snapshot !== "object") return null;
+    const s = snapshot as Partial<SceneSnapshot>;
+    if (s.version !== 1) return null;
+    if (!Array.isArray(s.objects) || typeof s.activeCameraId !== "string") {
+      return null;
     }
+    return s as SceneSnapshot;
+  }
 
-    this.measurementContextValue = {
-      ...this.measurementContextValue,
-      measurement: updated,
+  private deconstructSnapshot(snapshot: SceneSnapshot) {
+    const properties = new Map<string, ObjectProperties>();
+    const objects = snapshot.objects.map((entry) => {
+      const { properties: p, ...descriptor } = entry;
+      if (p) properties.set(descriptor.id, p);
+      return descriptor;
+    });
+    return {
+      objects,
+      activeCameraId: snapshot.activeCameraId,
+      properties,
     };
   }
 
   render() {
-    return html`
-      ${this.withBottomPanel(
-        this.withToolbar(
-          this.withRightPanel(
-            html`<scad-preview></scad-preview>`,
-            this.getRightPanelContent(),
-          ),
-        ),
-        this.panelContext.panels.debug ? html`<scad-debug></scad-debug>` : null,
-      )}
-    `;
-  }
-
-  private getRightPanelContent(): TemplateResult | null {
-    // If measurement is active, show measurement panel
-    if (this.panelContext.panels.measurement) {
-      return html`<scad-measurement></scad-measurement>`;
-    }
-
-    // Otherwise show parameters if enabled
-    if (this.panelContext.panels.parameters) {
-      return html`<scad-parameters></scad-parameters>`;
-    }
-
-    return null;
-  }
-
-  private withBottomPanel(main: TemplateResult, bottom: TemplateResult | null) {
-    if (!bottom) {
-      return main;
-    }
+    const { sidePanel, bottomPanel } = this.panelContext.panels;
 
     return html`
-      <vscode-split-layout
-        style="width: 100%; height: 100%; --separator-border: transparent; border: none;"
+      <scad-split-layout
         split="horizontal"
-        fixed="end"
-        handle-position=${this.debugPanelSize}
+        fixed-pane="end"
+        handle-position=${bottomPanel ? this.debugPanelSize : "100%"}
         @vsc-split-layout-change=${(e: CustomEvent) =>
           this.handleResize("bottom", e)}
       >
-        <div slot="start">${main}</div>
-        <div slot="end">${bottom}</div>
-      </vscode-split-layout>
-    `;
-  }
-
-  private withRightPanel(main: TemplateResult, right: TemplateResult | null) {
-    if (!right) {
-      return main;
-    }
-
-    return html`
-      <vscode-split-layout
-        style="width: 100%; height: 100%; --separator-border: transparent; border: none;"
-        split="vertical"
-        fixed-pane="end"
-        handle-position=${this.parameterPanelSize}
-        @vsc-split-layout-change=${(e: CustomEvent) =>
-          this.handleResize("right", e)}
-      >
-        <div slot="start">${main}</div>
-        <div slot="end">${right}</div>
-      </vscode-split-layout>
-    `;
-  }
-
-  private withToolbar(main: TemplateResult) {
-    if (!this.panelContext.panels.toolbar) {
-      return html`<scad-preview></scad-preview>`;
-    }
-
-    return html`
-      <div style="display: flex; flex-direction: column; height: 100%;">
-        <scad-toolbar></scad-toolbar>
-        ${main}
-      </div>
+        <scad-split-layout
+          slot="start"
+          split="vertical"
+          fixed-pane="end"
+          handle-position=${sidePanel ? this.parameterPanelSize : "100%"}
+          @vsc-split-layout-change=${(e: CustomEvent) =>
+            this.handleResize("right", e)}
+        >
+          <div slot="start" style="position:relative;width:100%;height:100%;">
+            <scad-preview></scad-preview>
+            <scad-toolbar></scad-toolbar>
+            <scad-options></scad-options>
+          </div>
+          <div slot="end">
+            ${sidePanel ? html`<scad-side-panel></scad-side-panel>` : nothing}
+          </div>
+        </scad-split-layout>
+        <div slot="end">
+          ${bottomPanel ? html`<scad-output></scad-output>` : nothing}
+        </div>
+      </scad-split-layout>
     `;
   }
 
