@@ -75,6 +75,11 @@ export class ScadClient {
 
       const paramArgs: string[] = [];
       for (const [name, value] of Object.entries(parameters)) {
+        if (typeof value === "string") {
+          paramArgs.push("-D", `${name}="${value}"`);
+          continue;
+        }
+
         paramArgs.push("-D", `${name}=${value}`);
       }
 
