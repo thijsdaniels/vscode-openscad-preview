@@ -1,5 +1,15 @@
 # vscode-openscad-preview
 
+## 0.6.0
+
+### Minor Changes
+
+- 3f97e6b: Added "lazy union" support for multi-part objects.
+
+### Patch Changes
+
+- 3f97e6b: String parameters are now passed to the CLI correctly.
+
 ## 0.5.0
 
 ### Minor Changes
