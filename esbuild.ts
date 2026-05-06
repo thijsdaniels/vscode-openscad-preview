@@ -8,6 +8,7 @@ const commonConfig: BuildOptions = {
 
 const extensionConfig: BuildOptions = {
   ...commonConfig,
+  tsconfig: "tsconfig.extension.json",
   entryPoints: ["src/extension/index.ts"],
   bundle: true,
   outfile: "dist/extension.cjs",
@@ -18,6 +19,7 @@ const extensionConfig: BuildOptions = {
 
 const webviewConfig: BuildOptions = {
   ...commonConfig,
+  tsconfig: "tsconfig.webview.json",
   entryPoints: ["src/webview/index.ts"],
   bundle: true,
   outfile: "dist/webview.js",

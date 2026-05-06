@@ -19,7 +19,7 @@
     "watch": "npm run compile -- --watch",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "types": "tsc --noEmit",
+    "types": "tsc -p tsconfig.extension.json && tsc -p tsconfig.webview.json",
     "format": "prettier --write .",
     "test": "node ./dist/test/runTest.js",
     "update": "npx npm-check-updates@latest -u -i"
@@ -30,25 +30,25 @@
   "dependencies": {
     "@lit/context": "^1.1.6",
     "@vscode-elements/elements": "^2.5.1",
-    "@vscode/codicons": "^0.0.44",
+    "@vscode/codicons": "^0.0.45",
     "chokidar": "^5.0.0",
     "lit": "^3.3.2",
-    "three": "^0.183.2"
+    "three": "^0.184.0"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.30.0",
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.0",
-    "@types/three": "^0.183.1",
+    "@types/node": "^25.6.0",
+    "@types/three": "^0.184.0",
     "@types/vscode": "^1.105.1",
     "@types/vscode-webview": "^1.57.5",
-    "esbuild": "^0.27.3",
-    "eslint": "^10.0.2",
-    "jiti": "^2.6.1",
-    "prettier": "^3.8.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.3.0",
+    "jiti": "^2.7.0",
+    "prettier": "^3.8.3",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.2",
     "vscode-test": "^1.6.1"
   },
   "engines": {
