@@ -1,3 +1,6 @@
+import { existsSync } from "fs";
+import { readFile } from "fs/promises";
+import * as path from "path";
 import { EventEmitter, Uri, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 import { ScadParameter } from "../../shared/types/ScadParameter";
@@ -56,19 +59,72 @@ export class ScadSession {
 
     // Watcher for file changes.
     this.scadWatcher = new FileWatcher({
-      path: documentUri.fsPath,
-      onChange: ({ content }) => {
-        const parser = new ScadParser(content);
-        this.scadParameters.updateDefinitions(parser.parameters);
-
-        this.scadRenderer.render(
-          this.documentUri.fsPath,
-          this.scadParameters.getActiveValues(),
-        );
-      },
+      paths: [documentUri.fsPath],
+      onChange: () => this.refresh(),
     });
 
     this.setupJsonWatcher();
+    this.refresh();
+  }
+
+  /**
+   * Discovers all parameters from the main file and its includes,
+   * updates the watcher to monitor all dependencies, and triggers a render.
+   */
+  private async refresh() {
+    const allParameters: ScadParameter[] = [];
+    const discoveredFiles = new Set<string>();
+
+    const parseRecursive = async (filePath: string, collectParameters: boolean) => {
+      if (discoveredFiles.has(filePath) && !collectParameters) return;
+      discoveredFiles.add(filePath);
+
+      try {
+        const content = await readFile(filePath, "utf8");
+        const parser = new ScadParser(content);
+
+        // Process includes (recurse and collect parameters)
+        for (const includePath of parser.includes) {
+          const resolved = this.resolveInclude(filePath, includePath);
+          if (resolved) {
+            await parseRecursive(resolved, collectParameters);
+          }
+        }
+
+        // Process uses (recurse but don't collect parameters)
+        for (const usePath of parser.uses) {
+          const resolved = this.resolveInclude(filePath, usePath);
+          if (resolved) {
+            await parseRecursive(resolved, false);
+          }
+        }
+
+        if (collectParameters) {
+          allParameters.push(...parser.parameters);
+        }
+      } catch {
+        // Silently fail for missing files
+      }
+    };
+
+    await parseRecursive(this.documentUri.fsPath, true);
+
+    this.scadParameters.updateDefinitions(allParameters);
+    this.scadWatcher.setPaths(Array.from(discoveredFiles));
+
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+    );
+  }
+
+  private resolveInclude(basePath: string, includePath: string): string | undefined {
+    const dir = path.dirname(basePath);
+    const resolved = path.resolve(dir, includePath);
+    if (existsSync(resolved)) {
+      return resolved;
+    }
+    return undefined;
   }
 
   private get jsonFileUri(): Uri {
@@ -81,7 +137,7 @@ export class ScadSession {
 
   private setupJsonWatcher() {
     this.jsonWatcher = new FileWatcher({
-      path: this.jsonFileUri.fsPath,
+      paths: [this.jsonFileUri.fsPath],
       onChange: async ({ content }) => {
         try {
           const data = JSON.parse(content);

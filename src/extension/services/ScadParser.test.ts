@@ -101,6 +101,23 @@ test("ScadParser - skips expression-valued variables", () => {
   ]);
 });
 
+test("ScadParser - extracts includes and uses successfully", () => {
+  const scadContent = `
+    include <config.scad>
+    use "params.scad"
+    
+    module helper() {
+      include <internal.scad>
+      use <lib.scad>
+    }
+  `;
+
+  const parser = new ScadParser(scadContent);
+
+  assert.deepStrictEqual(parser.includes, ["config.scad"]);
+  assert.deepStrictEqual(parser.uses, ["params.scad"]);
+});
+
 test("ScadParser - handles malformed contents defensively", () => {
   const scadContent = `
     /* [Weird Stuff] */
