@@ -35,23 +35,17 @@ export class ScadSession {
   private _onRenderStarted = new EventEmitter<void>();
   public readonly onRenderStarted = this._onRenderStarted.event;
 
+  private _onRenderError = new EventEmitter<Error>();
+  public readonly onRenderError = this._onRenderError.event;
+
   private _onLog = new EventEmitter<string>();
   public readonly onLog = this._onLog.event;
 
-  /**
-   * @todo The session lifecycle isn't as clean as it could be. For example,
-   * it shouldn't be necessary to fire the onParametersUpdated event from the
-   * scadWatcher.onChange callback, because that callback is already updating
-   * the parameters, which _should_ trigger the scadParameters.onChange
-   * callback, but it currently doesn't. When it does, we should make sure we
-   * don't render twice, because the scadParameters.onChange callback already
-   * triggers a render as well. Perhaps the lifecycle itself is OK, but just not
-   * very clearly laid out.
-   */
   constructor(public readonly documentUri: Uri) {
     this.scadRenderer = new ScadRenderer({
       onStart: () => this._onRenderStarted.fire(),
       onComplete: (data) => this._onRenderCompleted.fire(data),
+      onError: (err) => this._onRenderError.fire(err),
       onLog: (chunk) => this._onLog.fire(chunk),
     });
 
@@ -224,6 +218,7 @@ export class ScadSession {
     this.jsonWatcher?.close();
     this._onRenderStarted.dispose();
     this._onRenderCompleted.dispose();
+    this._onRenderError.dispose();
     this._onParametersChanged.dispose();
   }
 }

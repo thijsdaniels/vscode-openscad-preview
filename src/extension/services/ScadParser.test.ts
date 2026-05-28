@@ -77,6 +77,30 @@ test("ScadParser - extracts parameters successfully", () => {
   ]);
 });
 
+test("ScadParser - skips expression-valued variables", () => {
+  const scadContent = `
+    // Literal values — these should be included
+    full_width = 254;
+    surface_thickness = 3.5;
+    label = "default";
+
+    // Expression values — these must be skipped so OpenSCAD computes them
+    shelf_depth = device_depth + surface_thickness + width_extra_clearance;
+    inner_width_w_clearance = device_width + width_extra_clearance;
+    second_screw_height = screw_step_height + first_screw_height;
+    side_panel_shape = rect([side_panel_height, side_panel_depth]);
+    back_blocks = [[40, 80]];
+  `;
+
+  const parser = new ScadParser(scadContent);
+
+  assert.deepStrictEqual(parser.parameters, [
+    { name: "full_width", type: "number", group: undefined, value: 254 },
+    { name: "surface_thickness", type: "number", group: undefined, value: 3.5 },
+    { name: "label", type: "string", group: undefined, value: "default" },
+  ]);
+});
+
 test("ScadParser - handles malformed contents defensively", () => {
   const scadContent = `
     /* [Weird Stuff] */

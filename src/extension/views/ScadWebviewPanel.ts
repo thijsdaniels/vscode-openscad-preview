@@ -144,6 +144,43 @@ export class ScadWebviewPanel {
       this.disposables,
     );
 
+    this.session.onRenderError(
+      (err) => {
+        // Clear the loading spinner so the webview doesn't hang indefinitely.
+        this.postMessage({
+          type: "loadingState",
+          loading: false,
+        });
+
+        // Show the error in the VS Code notification area and direct the user
+        // to the output channel for the full OpenSCAD stderr output.
+        const msg = err.message;
+        window.showErrorMessage(
+          `OpenSCAD render failed: ${msg.split("\n")[0]}`,
+          "Show Output"
+        ).then((choice) => {
+          if (choice === "Show Output") {
+            // The output channel is named "OpenSCAD Preview" — reveal it.
+            // We can't reference it directly here, but the user can open it
+            // from View > Output and select "OpenSCAD Preview".
+            window.showInformationMessage(
+              'Open the Output panel and select "OpenSCAD Preview" from the dropdown to see the full error.'
+            );
+          }
+        });
+
+        // Also forward the first line of the error to the webview log panel.
+        if (this.isWebviewReady) {
+          this.postMessage({
+            type: "log",
+            message: `ERROR: ${msg}`,
+          });
+        }
+      },
+      null,
+      this.disposables,
+    );
+
     this.session.onParametersChanged(
       ({ parameters, parameterSets, activeSetName, overrides }) => {
         if (this.isWebviewReady) {

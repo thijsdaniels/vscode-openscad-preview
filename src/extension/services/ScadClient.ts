@@ -4,7 +4,7 @@ import { readFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { platform } from "process";
-import { workspace } from "vscode";
+import { window, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 
 const platformDefaults: Record<string, string[]> = {
@@ -27,6 +27,8 @@ export class ScadClient {
     string,
     ChildProcessWithoutNullStreams
   >();
+
+  public static readonly outputChannel = window.createOutputChannel("OpenSCAD Preview");
 
   private static _executablePath: string | undefined;
 
@@ -67,8 +69,8 @@ export class ScadClient {
     format: ModelFormat = ModelFormat.ThreeMF,
     onStderr?: (chunk: string) => void,
   ): Promise<Buffer> {
-    // Kill any currently running process for this file to prevent runway spawn leaks
-    // when sliders emit rapid updates
+    // Kill any currently running process for this file to prevent runaway
+    // spawn leaks when sliders emit rapid updates.
     const existingProcess = this.activeProcesses.get(scadPath);
     if (existingProcess) {
       existingProcess.kill();
@@ -91,7 +93,8 @@ export class ScadClient {
         paramArgs.push("-D", `${name}=${value}`);
       }
 
-      const process = spawn(ScadClient.executablePath, [
+      const execPath = ScadClient.executablePath;
+      const args = [
         "--export-format",
         format,
         ...this.enableLazyUnion,
@@ -99,36 +102,54 @@ export class ScadClient {
         tmpFile,
         ...paramArgs,
         scadPath,
-      ]);
+      ];
+
+      this.outputChannel.appendLine(`[OpenSCAD] Running: ${execPath} ${args.join(" ")}`);
+
+      const process = spawn(execPath, args);
 
       this.activeProcesses.set(scadPath, process);
 
+      let stderrBuffer = "";
+
       process.stderr.on("data", (data) => {
+        const chunk = data.toString();
+        stderrBuffer += chunk;
+        // Always log to the output channel so the user can see OpenSCAD errors
+        // regardless of whether the webview is ready.
+        this.outputChannel.append(chunk);
         if (onStderr) {
-          onStderr(data.toString());
+          onStderr(chunk);
         }
       });
 
       process.on("close", async (code, signal) => {
-        this.activeProcesses.delete(scadPath);
+        // Only clean up the map entry if it still points to this process.
+        // A newer render may have already replaced it; blindly deleting would
+        // remove the active process and break subsequent cancellation.
+        if (this.activeProcesses.get(scadPath) === process) {
+          this.activeProcesses.delete(scadPath);
+        }
 
-        // If process was killed gracefully by our cancellation, cleanly reject error
-        if (signal === "SIGTERM") {
+        // If process was killed gracefully by our cancellation, reject cleanly.
+        if (signal === "SIGTERM" || (platform === "win32" && signal === null && code === 1 && stderrBuffer === "")) {
           reject(new Error("Render cancelled"));
           return;
         }
 
         if (code !== 0) {
-          const errorMsg = `OpenSCAD process exited with code ${code}`;
-          reject(new Error(errorMsg));
+          const detail = stderrBuffer.trim() ? `\n${stderrBuffer.trim()}` : "";
+          this.outputChannel.appendLine(`[OpenSCAD] Process exited with code ${code}${detail ? "" : " (no stderr output)"}`);
+          reject(new Error(`OpenSCAD process exited with code ${code}${detail}`));
           return;
         }
 
         try {
           const buffer = await readFile(tmpFile);
+          this.outputChannel.appendLine(`[OpenSCAD] Render complete: ${tmpFile}`);
           resolve(buffer);
         } catch (err) {
-          reject(new Error(`Failed to read temporary 3MF file: ${err}`));
+          reject(new Error(`Failed to read temporary output file: ${err}`));
         } finally {
           // Clean up the temp file
           try {
@@ -140,9 +161,12 @@ export class ScadClient {
       });
 
       process.on("error", (err) => {
-        this.activeProcesses.delete(scadPath);
-        const errorMsg = `Failed to start OpenSCAD: ${err}`;
-        reject(new Error(errorMsg));
+        if (this.activeProcesses.get(scadPath) === process) {
+          this.activeProcesses.delete(scadPath);
+        }
+        const msg = `Failed to start OpenSCAD: ${err.message}\nExecutable path: ${execPath}`;
+        this.outputChannel.appendLine(`[OpenSCAD] ${msg}`);
+        reject(new Error(msg));
       });
     });
   }
