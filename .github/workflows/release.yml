@@ -60,6 +60,8 @@ jobs:
       - name: Build VSIX
         id: build
         uses: ./.github/actions/build-vsix
+        with:
+          output: openscad-preview-v${{ needs.release.outputs.version }}.vsix
 
       - name: Upload Release Asset
         uses: ./.github/actions/upload-release-asset
