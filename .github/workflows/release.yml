@@ -1,114 +1,81 @@
 name: Release
 
+# Runs on every push to main and releases whenever package.json carries a
+# version that has not been tagged yet — whether that bump came from merging the
+# Changesets "Release" PR (see version.yml) or from a hand-edited package.json +
+# CHANGELOG. Also dispatchable manually to retry a release that failed early.
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  version-and-release:
-    name: Version & Release
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      is_new_version: ${{ env.IS_NEW_VERSION }}
+      version: ${{ steps.version.outputs.version }}
+      is_new_version: ${{ steps.check.outputs.is_new_version }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Package Extension
-        run: npx @vscode/vsce package -o openscad-preview.vsix
-
       - name: Read Version
         id: version
-        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Check if Version Exists
         id: check
         run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.VERSION }}"; then
-            echo "IS_NEW_VERSION=false" >> $GITHUB_ENV
-            echo "PUBLISH_CMD=echo 'Version v${{ env.VERSION }} already exists. Skipping publish.'" >> $GITHUB_ENV
+          if git ls-remote --tags origin | grep -qE "refs/tags/v${{ steps.version.outputs.version }}(\^|$)"; then
+            echo "is_new_version=false" >> "$GITHUB_OUTPUT"
           else
-            echo "IS_NEW_VERSION=true" >> $GITHUB_ENV
-            echo "PUBLISH_CMD=npx changeset tag" >> $GITHUB_ENV
+            echo "is_new_version=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create PR or Publish Release
-        id: changesets
-        uses: changesets/action@v1
+      - name: Create GitHub Release
+        if: steps.check.outputs.is_new_version == 'true'
+        uses: ./.github/actions/create-github-release
         with:
-          commit: "chore(release): version packages"
-          title: "Release"
-          publish: ${{ env.PUBLISH_CMD }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ steps.version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Attach Artifact to GitHub Release
-        if: steps.changesets.outputs.published == 'true' && env.IS_NEW_VERSION == 'true'
-        run: gh release upload v${{ env.VERSION }} openscad-preview.vsix
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Report Skipped Release
+        if: steps.check.outputs.is_new_version != 'true'
+        run: echo "v${{ steps.version.outputs.version }} is already released — nothing to publish."
 
-      - name: Upload Artifact for Publish Jobs
-        if: steps.changesets.outputs.published == 'true' && env.IS_NEW_VERSION == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: vsix-package
-          path: openscad-preview.vsix
-          retention-days: 1
-
-  publish-vsce:
-    name: Publish VSCE
-    needs: version-and-release
-    if: needs.version-and-release.outputs.published == 'true' && needs.version-and-release.outputs.is_new_version == 'true'
+  publish:
+    name: Publish
+    needs: release
+    if: needs.release.outputs.is_new_version == 'true'
     runs-on: ubuntu-latest
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Build VSIX
+        id: build
+        uses: ./.github/actions/build-vsix
+
+      - name: Upload Release Asset
+        uses: ./.github/actions/upload-release-asset
         with:
-          name: vsix-package
+          version: ${{ needs.release.outputs.version }}
+          asset: ${{ steps.build.outputs.vsix }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to Microsoft Marketplace
-        if: env.VSCE_PAT != ''
-        run: npx @vscode/vsce publish -p ${{ env.VSCE_PAT }} --packagePath openscad-preview.vsix
-
-      - name: Skip Notification
-        if: env.VSCE_PAT == ''
-        run: echo "Skipped publication because VSCE_PAT is missing."
-
-  publish-ovsx:
-    name: Publish OVSX
-    needs: version-and-release
-    if: needs.version-and-release.outputs.published == 'true' && needs.version-and-release.outputs.is_new_version == 'true'
-    runs-on: ubuntu-latest
-    env:
-      OVSX_PAT: ${{ secrets.OVSX_PAT }}
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
+      - name: Publish to VS Code Marketplace
+        uses: ./.github/actions/publish-vsce
         with:
-          name: vsix-package
+          vsix: ${{ steps.build.outputs.vsix }}
+          token: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX
-        if: env.OVSX_PAT != ''
-        run: npx ovsx publish -p ${{ env.OVSX_PAT }} --packagePath openscad-preview.vsix
-
-      - name: Skip Notification
-        if: env.OVSX_PAT == ''
-        run: echo "Skipped publication because OVSX_PAT is missing."
+        uses: ./.github/actions/publish-ovsx
+        with:
+          vsix: ${{ steps.build.outputs.vsix }}
+          token: ${{ secrets.OVSX_PAT }}

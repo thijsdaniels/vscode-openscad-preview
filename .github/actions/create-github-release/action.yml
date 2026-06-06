@@ -1,0 +1,45 @@
+name: Create GitHub Release
+description: Create a git tag and GitHub release for the given version, using the matching CHANGELOG.md section as the release notes. Fails if no matching section exists.
+
+inputs:
+  version:
+    description: Version to release, without the 'v' prefix.
+    required: true
+  token:
+    description: GitHub token with contents:write permission.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Pull the section for this version out of CHANGELOG.md: everything between
+    # the "## <version>" heading and the next "## " heading. Mirrors the notes
+    # Changesets writes for automatic releases.
+    - name: Extract Changelog Notes
+      id: notes
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        notes_file="$RUNNER_TEMP/release-notes.md"
+        awk -v ver="$VERSION" '
+          $0 == "## " ver { found = 1; next }
+          found && /^## / { exit }
+          found { print }
+        ' CHANGELOG.md > "$notes_file"
+        if grep -q '[^[:space:]]' "$notes_file"; then
+          echo "file=$notes_file" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Create Tag and Release
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+        NOTES_FILE: ${{ steps.notes.outputs.file }}
+      run: |
+        if [ -z "$NOTES_FILE" ]; then
+          echo "::error::No CHANGELOG.md entry found for v$VERSION. Add a '## $VERSION' section before releasing."
+          exit 1
+        fi
+        gh release create "v$VERSION" --title "v$VERSION" --notes-file "$NOTES_FILE"

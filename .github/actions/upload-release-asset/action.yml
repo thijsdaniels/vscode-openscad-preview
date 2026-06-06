@@ -1,0 +1,22 @@
+name: Upload Release Asset
+description: Attach a file to an existing GitHub release.
+
+inputs:
+  version:
+    description: Version of the release to attach to, without the 'v' prefix.
+    required: true
+  asset:
+    description: Path to the file to upload.
+    required: true
+  token:
+    description: GitHub token with contents:write permission.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Upload Asset
+      run: gh release upload "v${{ inputs.version }}" "${{ inputs.asset }}"
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
