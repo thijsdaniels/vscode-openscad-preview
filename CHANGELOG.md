@@ -1,12 +1,15 @@
 # vscode-openscad-preview
 
-## 0.6.1
+## 0.7.0
+
+### Minor Changes
+
+- Expression-valued variables (e.g. `shelf_depth = a + b + c`) are no longer treated as customizer parameters and passed as quoted string `-D` arguments to OpenSCAD. These variables are now skipped by the parser and computed by OpenSCAD from the source file as intended. This was the root cause of some render failures.
+- Render errors are now propagated to the VS Code UI: the loading spinner clears on failure, an error notification appears with a "Show Output" action, and the full OpenSCAD stderr output is forwarded to the Output panel for this extension.
+- All OpenSCAD stderr is now streamed to the Output channel immediately as it arrives, not only on failure. The full command is also logged before each render.
 
 ### Patch Changes
 
-- Fix expression-valued variables (e.g. `shelf_depth = a + b + c`) being treated as customizer parameters and passed as quoted string `-D` arguments to OpenSCAD. These variables are now skipped by the parser and computed by OpenSCAD from the source file as intended. This was the root cause of some render failures.
-- Render errors are now propagated to the VS Code UI: the loading spinner clears on failure, an error notification appears with a "Show Output" action, and the full OpenSCAD stderr output is forwarded to the Output panel for this extension.
-- All OpenSCAD stderr is now streamed to the Output channel immediately as it arrives, not only on failure. The full command is also logged before each render.
 - Fixed a double-render on startup caused by the file watcher firing both an `add` event and an explicit read simultaneously, resulting in the first render being immediately cancelled.
 - Fixed cancelled renders on Windows being surfaced as errors rather than being silently discarded.
 

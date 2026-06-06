@@ -1,9 +1,7 @@
-name: CI/CD Pipeline
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -26,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install Dependencies
         run: npm ci
@@ -64,7 +62,7 @@ jobs:
         run: gh release upload v${{ env.VERSION }} openscad-preview.vsix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Upload Artifact for Publish Jobs
         if: steps.changesets.outputs.published == 'true' && env.IS_NEW_VERSION == 'true'
         uses: actions/upload-artifact@v4
