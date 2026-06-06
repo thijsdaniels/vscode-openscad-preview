@@ -55,6 +55,11 @@ export class ScadParser {
 
       const parsedVal = this.parseVariableValue(decl.valueStr);
 
+      // Expression-valued variables (not literal booleans, numbers, or quoted
+      // strings) are computed by OpenSCAD from the file — skip them here so
+      // they are never overridden via -D with a wrong string value.
+      if (!parsedVal) continue;
+
       // We construct the object in a type-safe way before applying to partial
       const param: Partial<ScadParameter> = {
         name: decl.name,
@@ -95,18 +100,28 @@ export class ScadParser {
   private parseVariableValue(valueStr: string): {
     type: "number" | "boolean" | "string";
     value: string | number | boolean;
-  } {
+  } | null {
     const trimmed = valueStr.trim();
+
     if (trimmed === "true" || trimmed === "false") {
       return { type: "boolean", value: trimmed === "true" };
-    } else if (trimmed !== "" && !isNaN(Number(trimmed))) {
-      return { type: "number", value: Number(trimmed) };
-    } else {
-      return {
-        type: "string",
-        value: trimmed.replace(/^["']|["']$/g, ""),
-      };
     }
+
+    if (trimmed !== "" && !isNaN(Number(trimmed))) {
+      return { type: "number", value: Number(trimmed) };
+    }
+
+    // Only accept explicitly quoted string literals. Bare expressions
+    // (arithmetic, function calls, vectors, variable references) return null
+    // so the caller can skip them — OpenSCAD computes those itself.
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      return { type: "string", value: trimmed.slice(1, -1) };
+    }
+
+    return null;
   }
 
   private parseChoices(

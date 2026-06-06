@@ -25,14 +25,21 @@ export class FileWatcher {
       this.watcher.close();
     }
 
+    // ignoreInitial: true prevents chokidar from firing an "add" event for
+    // a file that already exists when the watcher starts. Without this fix,
+    // chokidar fires "add" AND we call handleFileChange() explicitly below,
+    // so the onChange callback fires twice in rapid succession. The first
+    // render gets killed immediately (producing "Render cancelled") and the
+    // second runs into a torn-down state (producing "exit code 1").
     this.watcher = watch(path, {
       persistent: true,
-      ignoreInitial: false,
+      ignoreInitial: true,
     });
 
     this.watcher.on("add", (path) => this.handleFileChange(path));
     this.watcher.on("change", (path) => this.handleFileChange(path));
 
+    // Read the file once immediately so the session has content on startup.
     await this.handleFileChange(path);
   }
 
