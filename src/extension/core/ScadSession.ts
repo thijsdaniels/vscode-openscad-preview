@@ -1,11 +1,8 @@
-import { existsSync } from "fs";
-import { readFile } from "fs/promises";
-import * as path from "path";
 import { EventEmitter, Uri, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 import { ScadParameter } from "../../shared/types/ScadParameter";
 import { ScadClient } from "../services/ScadClient";
-import { ScadParser } from "../services/ScadParser";
+import { ScadDependencyResolver } from "../services/ScadDependencyResolver";
 import { ScadRenderer } from "../services/ScadRenderer";
 import { FileWatcher } from "../services/ScadWatcher";
 import { ScadParameters } from "./ScadParameters";
@@ -19,6 +16,7 @@ export class ScadSession {
   private jsonWatcher?: FileWatcher;
   private scadParameters: ScadParameters;
   private scadRenderer: ScadRenderer;
+  private dependencyResolver: ScadDependencyResolver;
 
   // Events that Views can subscribe to
   private _onRenderCompleted = new EventEmitter<{
@@ -57,6 +55,10 @@ export class ScadSession {
       onChange: (event) => this._onParametersChanged.fire(event),
     });
 
+    this.dependencyResolver = new ScadDependencyResolver({
+      onLog: (msg) => this._onLog.fire(msg),
+    });
+
     // Watcher for file changes.
     this.scadWatcher = new FileWatcher({
       paths: [documentUri.fsPath],
@@ -72,69 +74,15 @@ export class ScadSession {
    * updates the watcher to monitor all dependencies, and triggers a render.
    */
   private async refresh() {
-    const allParameters: ScadParameter[] = [];
-    const discoveredFiles = new Set<string>();
-    const parametersProcessed = new Set<string>();
-
-    const parseRecursive = async (filePath: string, collectParameters: boolean) => {
-      if (parametersProcessed.has(filePath)) return;
-      if (discoveredFiles.has(filePath) && !collectParameters) return;
-
-      discoveredFiles.add(filePath);
-      if (collectParameters) {
-        parametersProcessed.add(filePath);
-      }
-
-      try {
-        const content = await readFile(filePath, "utf8");
-        const parser = new ScadParser(content);
-
-        // Process includes (recurse and collect parameters)
-        for (const includePath of parser.includes) {
-          const resolved = this.resolveInclude(filePath, includePath);
-          if (resolved) {
-            await parseRecursive(resolved, collectParameters);
-          } else {
-            this._onLog.fire(`Warning: Could not resolve include <${includePath}> from ${filePath}\n`);
-          }
-        }
-
-        // Process uses (recurse but don't collect parameters)
-        for (const usePath of parser.uses) {
-          const resolved = this.resolveInclude(filePath, usePath);
-          if (resolved) {
-            await parseRecursive(resolved, false);
-          } else {
-            this._onLog.fire(`Warning: Could not resolve use <${usePath}> from ${filePath}\n`);
-          }
-        }
-
-        if (collectParameters) {
-          allParameters.push(...parser.parameters);
-        }
-      } catch (err) {
-        this._onLog.fire(`Error reading file ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`);
-      }
-    };
-
-    await parseRecursive(this.documentUri.fsPath, true);
+    const { allParameters, discoveredFiles } = await this.dependencyResolver.resolve(this.documentUri.fsPath);
 
     this.scadParameters.updateDefinitions(allParameters);
-    this.scadWatcher.setPaths(Array.from(discoveredFiles));
+    this.scadWatcher.setPaths(discoveredFiles);
 
     this.scadRenderer.render(
       this.documentUri.fsPath,
       this.scadParameters.getActiveValues(),
     );
-  }
-
-  private resolveInclude(basePath: string, includePath: string): string | undefined {
-    const dir = path.dirname(basePath);
-    const resolved = path.resolve(dir, includePath);
-    if (existsSync(resolved)) {
-      return resolved;
-    }
-    return undefined;
   }
 
   private get jsonFileUri(): Uri {
