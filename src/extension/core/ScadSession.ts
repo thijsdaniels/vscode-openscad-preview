@@ -74,10 +74,16 @@ export class ScadSession {
   private async refresh() {
     const allParameters: ScadParameter[] = [];
     const discoveredFiles = new Set<string>();
+    const parametersProcessed = new Set<string>();
 
     const parseRecursive = async (filePath: string, collectParameters: boolean) => {
+      if (parametersProcessed.has(filePath)) return;
       if (discoveredFiles.has(filePath) && !collectParameters) return;
+
       discoveredFiles.add(filePath);
+      if (collectParameters) {
+        parametersProcessed.add(filePath);
+      }
 
       try {
         const content = await readFile(filePath, "utf8");
@@ -88,6 +94,8 @@ export class ScadSession {
           const resolved = this.resolveInclude(filePath, includePath);
           if (resolved) {
             await parseRecursive(resolved, collectParameters);
+          } else {
+            this._onLog.fire(`Warning: Could not resolve include <${includePath}> from ${filePath}\n`);
           }
         }
 
@@ -96,14 +104,16 @@ export class ScadSession {
           const resolved = this.resolveInclude(filePath, usePath);
           if (resolved) {
             await parseRecursive(resolved, false);
+          } else {
+            this._onLog.fire(`Warning: Could not resolve use <${usePath}> from ${filePath}\n`);
           }
         }
 
         if (collectParameters) {
           allParameters.push(...parser.parameters);
         }
-      } catch {
-        // Silently fail for missing files
+      } catch (err) {
+        this._onLog.fire(`Error reading file ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`);
       }
     };
 
