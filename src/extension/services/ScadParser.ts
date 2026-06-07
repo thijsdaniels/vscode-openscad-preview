@@ -10,13 +10,24 @@ import {
  */
 export class ScadParser {
   public readonly parameters: ScadParameter[];
+  public readonly includes: string[];
+  public readonly uses: string[];
 
   constructor(content: string) {
-    this.parameters = this.extractParameters(content);
+    const parsed = this.parseContent(content);
+    this.parameters = parsed.parameters;
+    this.includes = parsed.includes;
+    this.uses = parsed.uses;
   }
 
-  private extractParameters(content: string): ScadParameter[] {
+  private parseContent(content: string): {
+    parameters: ScadParameter[];
+    includes: string[];
+    uses: string[];
+  } {
     const params: ScadParameter[] = [];
+    const includes: string[] = [];
+    const uses: string[] = [];
     let currentGroup = "";
     let moduleDepth = 0;
 
@@ -30,7 +41,7 @@ export class ScadParser {
       }
 
       // Track module scope using brace counting
-      if (trimmed.startsWith("module")) {
+      if (trimmed.startsWith("module") || trimmed.startsWith("function")) {
         moduleDepth++;
       }
       moduleDepth += (trimmed.match(/\{/g) || []).length;
@@ -43,6 +54,17 @@ export class ScadParser {
         const group = this.extractParameterGroup(trimmed);
         if (group !== null) {
           currentGroup = group;
+        }
+        continue;
+      }
+
+      // Look for include/use statements
+      const depMatch = trimmed.match(/^(include|use)\s*[<"](.+?)[>"]/);
+      if (depMatch) {
+        if (depMatch[1] === "include") {
+          includes.push(depMatch[2]);
+        } else {
+          uses.push(depMatch[2]);
         }
         continue;
       }
@@ -75,7 +97,7 @@ export class ScadParser {
       params.push(param as ScadParameter);
     }
 
-    return params;
+    return { parameters: params, includes, uses };
   }
 
   private extractParameterGroup(line: string): string | null {

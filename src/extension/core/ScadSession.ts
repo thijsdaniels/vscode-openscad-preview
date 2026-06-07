@@ -2,7 +2,7 @@ import { EventEmitter, Uri, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 import { ScadParameter } from "../../shared/types/ScadParameter";
 import { ScadClient } from "../services/ScadClient";
-import { ScadParser } from "../services/ScadParser";
+import { ScadDependencyResolver } from "../services/ScadDependencyResolver";
 import { ScadRenderer } from "../services/ScadRenderer";
 import { FileWatcher } from "../services/ScadWatcher";
 import { ScadParameters } from "./ScadParameters";
@@ -16,6 +16,7 @@ export class ScadSession {
   private jsonWatcher?: FileWatcher;
   private scadParameters: ScadParameters;
   private scadRenderer: ScadRenderer;
+  private dependencyResolver: ScadDependencyResolver;
 
   // Events that Views can subscribe to
   private _onRenderCompleted = new EventEmitter<{
@@ -54,21 +55,34 @@ export class ScadSession {
       onChange: (event) => this._onParametersChanged.fire(event),
     });
 
+    this.dependencyResolver = new ScadDependencyResolver({
+      onLog: (msg) => this._onLog.fire(msg),
+    });
+
     // Watcher for file changes.
     this.scadWatcher = new FileWatcher({
-      path: documentUri.fsPath,
-      onChange: ({ content }) => {
-        const parser = new ScadParser(content);
-        this.scadParameters.updateDefinitions(parser.parameters);
-
-        this.scadRenderer.render(
-          this.documentUri.fsPath,
-          this.scadParameters.getActiveValues(),
-        );
-      },
+      paths: [documentUri.fsPath],
+      onChange: () => this.refresh(),
     });
 
     this.setupJsonWatcher();
+    this.refresh();
+  }
+
+  /**
+   * Discovers all parameters from the main file and its includes,
+   * updates the watcher to monitor all dependencies, and triggers a render.
+   */
+  private async refresh() {
+    const { allParameters, discoveredFiles } = await this.dependencyResolver.resolve(this.documentUri.fsPath);
+
+    this.scadParameters.updateDefinitions(allParameters);
+    this.scadWatcher.setPaths(discoveredFiles);
+
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+    );
   }
 
   private get jsonFileUri(): Uri {
@@ -81,7 +95,7 @@ export class ScadSession {
 
   private setupJsonWatcher() {
     this.jsonWatcher = new FileWatcher({
-      path: this.jsonFileUri.fsPath,
+      paths: [this.jsonFileUri.fsPath],
       onChange: async ({ content }) => {
         try {
           const data = JSON.parse(content);
