@@ -67,7 +67,7 @@ export class ScadClient {
     const config = workspace.getConfiguration("openscad");
     const common = config.get<string[]>("extraArgs", []);
     const modeSpecific = config.get<string[]>(
-      preview ? "previewExtraArgs" : "renderExtraArgs",
+      preview ? "extraArgsPreview" : "extraArgsExport",
       [],
     );
     return [...common, ...modeSpecific];

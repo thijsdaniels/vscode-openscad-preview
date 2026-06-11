@@ -82,6 +82,11 @@
           "default": false,
           "description": "Enable lazy unions, creating a multi-part exported object."
         },
+        "openscad.preview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Set $preview=true when rendering the live preview. Designs that use $preview for detail control (e.g. $fn = $preview ? 12 : 72) will render faster at lower resolution. Disable to match export quality in the preview panel."
+        },
         "openscad.extraArgs": {
           "type": "array",
           "items": {
@@ -90,21 +95,21 @@
           "default": [],
           "description": "Extra command-line arguments applied to every OpenSCAD invocation (both preview and export), before the input file."
         },
-        "openscad.previewExtraArgs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Extra command-line arguments applied only to preview renders, appended after openscad.extraArgs."
-        },
-        "openscad.renderExtraArgs": {
+        "openscad.extraArgsExport": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
           "description": "Extra command-line arguments applied only to export renders, appended after openscad.extraArgs."
+        },
+        "openscad.extraArgsPreview": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra command-line arguments applied only to preview renders, appended after openscad.extraArgs."
         }
       }
     },
