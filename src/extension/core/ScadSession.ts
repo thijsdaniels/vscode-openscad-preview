@@ -1,6 +1,5 @@
 import { EventEmitter, Uri, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
-import { RenderMode } from "../../shared/types/RenderMode";
 import { ScadParameter } from "../../shared/types/ScadParameter";
 import { ScadClient } from "../services/ScadClient";
 import { ScadParser } from "../services/ScadParser";
@@ -211,7 +210,6 @@ export class ScadSession {
       this.documentUri.fsPath,
       this.scadParameters.getActiveValues(),
       format,
-      { renderMode: RenderMode.Render },
     );
   }
 

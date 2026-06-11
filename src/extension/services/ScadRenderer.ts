@@ -1,6 +1,5 @@
 import { workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
-import { RenderMode } from "../../shared/types/RenderMode";
 import { ScadClient } from "./ScadClient";
 
 type OnStartCallback = () => void;
@@ -49,16 +48,12 @@ export class ScadRenderer {
       .getConfiguration("openscad")
       .get<ModelFormat>("previewFormat", ModelFormat.ThreeMF);
 
-    const renderMode = workspace
-      .getConfiguration("openscad")
-      .get<RenderMode>("previewRenderMode", RenderMode.Preview);
-
     try {
       const modelBuffer = await ScadClient.render(
         path,
         parameters,
         format,
-        { renderMode, onStderr: this.onLog },
+        { preview: true, onStderr: this.onLog },
       );
       this.onComplete({ buffer: modelBuffer, format });
     } catch (err) {

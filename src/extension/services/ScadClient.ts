@@ -6,7 +6,6 @@ import { join } from "path";
 import { platform } from "process";
 import { window, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
-import { RenderMode } from "../../shared/types/RenderMode";
 
 const platformDefaults: Record<string, string[]> = {
   darwin: ["/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD"],
@@ -64,34 +63,21 @@ export class ScadClient {
     return setting ? ["--enable", "lazy-union"] : [];
   }
 
-  private static extraArgsFor(renderMode: RenderMode): string[] {
+  private static extraArgsFor(preview: boolean): string[] {
     const config = workspace.getConfiguration("openscad");
     const common = config.get<string[]>("extraArgs", []);
     const modeSpecific = config.get<string[]>(
-      renderMode === RenderMode.Render ? "renderExtraArgs" : "previewExtraArgs",
+      preview ? "previewExtraArgs" : "renderExtraArgs",
       [],
     );
     return [...common, ...modeSpecific];
-  }
-
-  private static renderModeArgs(mode: RenderMode): string[] {
-    // --preview/--preview=throwntogether controls the rendering engine (OpenCSG vs CGAL)
-    // but does NOT set $preview=true for geometry formats (3mf, stl, etc.) — only PNG
-    // qualifies via canPreview() in OpenSCAD's source. We must set $preview explicitly.
-    if (mode === RenderMode.ThrownTogether) {
-      return ["--preview=throwntogether", "-D", "$preview=true"];
-    }
-    if (mode === RenderMode.Preview) {
-      return ["--preview", "-D", "$preview=true"];
-    }
-    return ["--render"];
   }
 
   public static async render(
     scadPath: string,
     parameters: Record<string, string | number | boolean> = {},
     format: ModelFormat = ModelFormat.ThreeMF,
-    { renderMode = RenderMode.Render, onStderr }: { renderMode?: RenderMode; onStderr?: (chunk: string) => void } = {},
+    { preview = false, onStderr }: { preview?: boolean; onStderr?: (chunk: string) => void } = {},
   ): Promise<Buffer> {
     // Kill any currently running process for this file to prevent runaway
     // spawn leaks when sliders emit rapid updates.
@@ -121,12 +107,14 @@ export class ScadClient {
       const args = [
         "--export-format",
         format,
-        ...ScadClient.renderModeArgs(renderMode),
         ...this.enableLazyUnion,
         "-o",
         tmpFile,
+        // OpenSCAD's canPreview() excludes geometry formats (3mf, stl, etc.) so
+        // --preview does not set $preview for these formats — must be set explicitly.
+        ...(preview ? ["-D", "$preview=true"] : []),
         ...paramArgs,
-        ...ScadClient.extraArgsFor(renderMode),
+        ...ScadClient.extraArgsFor(preview),
         scadPath,
       ];
 

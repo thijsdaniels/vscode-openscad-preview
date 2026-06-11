@@ -82,21 +82,6 @@
           "default": false,
           "description": "Enable lazy unions, creating a multi-part exported object."
         },
-        "openscad.previewRenderMode": {
-          "type": "string",
-          "enum": [
-            "preview",
-            "throwntogether",
-            "render"
-          ],
-          "enumDescriptions": [
-            "OpenCSG preview — fast GPU-based rendering. Sets $preview=true.",
-            "ThrownTogether — fastest approximate rendering, highlights non-manifold geometry. Sets $preview=true.",
-            "Full CGAL render — exact geometry, same as export. Sets $preview=false. Matches the behaviour prior to this setting."
-          ],
-          "default": "preview",
-          "description": "Render mode used for the live preview. Exports always use full --render (CGAL) mode."
-        },
         "openscad.extraArgs": {
           "type": "array",
           "items": {
