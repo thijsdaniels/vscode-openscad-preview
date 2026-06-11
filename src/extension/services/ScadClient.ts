@@ -6,6 +6,7 @@ import { join } from "path";
 import { platform } from "process";
 import { window, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
+import { RenderMode } from "../../shared/types/RenderMode";
 
 const platformDefaults: Record<string, string[]> = {
   darwin: ["/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD"],
@@ -63,11 +64,31 @@ export class ScadClient {
     return setting ? ["--enable", "lazy-union"] : [];
   }
 
+  private static extraArgsFor(renderMode: RenderMode): string[] {
+    const config = workspace.getConfiguration("openscad");
+    const common = config.get<string[]>("extraArgs", []);
+    const modeSpecific = config.get<string[]>(
+      renderMode === RenderMode.Render ? "renderExtraArgs" : "previewExtraArgs",
+      [],
+    );
+    return [...common, ...modeSpecific];
+  }
+
+  private static renderModeArgs(mode: RenderMode): string[] {
+    if (mode === RenderMode.ThrownTogether) {
+      return ["--preview=throwntogether"];
+    }
+    if (mode === RenderMode.Preview) {
+      return ["--preview"];
+    }
+    return ["--render"];
+  }
+
   public static async render(
     scadPath: string,
     parameters: Record<string, string | number | boolean> = {},
     format: ModelFormat = ModelFormat.ThreeMF,
-    onStderr?: (chunk: string) => void,
+    { renderMode = RenderMode.Render, onStderr }: { renderMode?: RenderMode; onStderr?: (chunk: string) => void } = {},
   ): Promise<Buffer> {
     // Kill any currently running process for this file to prevent runaway
     // spawn leaks when sliders emit rapid updates.
@@ -97,10 +118,12 @@ export class ScadClient {
       const args = [
         "--export-format",
         format,
+        ...ScadClient.renderModeArgs(renderMode),
         ...this.enableLazyUnion,
         "-o",
         tmpFile,
         ...paramArgs,
+        ...ScadClient.extraArgsFor(renderMode),
         scadPath,
       ];
 

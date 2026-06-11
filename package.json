@@ -81,6 +81,43 @@
           "type": "boolean",
           "default": false,
           "description": "Enable lazy unions, creating a multi-part exported object."
+        },
+        "openscad.previewRenderMode": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "throwntogether"
+          ],
+          "enumDescriptions": [
+            "OpenCSG preview — fast GPU-based rendering. Sets $preview=true.",
+            "ThrownTogether — fastest approximate rendering, highlights non-manifold geometry. Sets $preview=true."
+          ],
+          "default": "preview",
+          "description": "Render mode used for the live preview. Exports always use full --render (CGAL) mode."
+        },
+        "openscad.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra command-line arguments applied to every OpenSCAD invocation (both preview and export), before the input file."
+        },
+        "openscad.previewExtraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra command-line arguments applied only to preview renders, appended after openscad.extraArgs."
+        },
+        "openscad.renderExtraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra command-line arguments applied only to export renders, appended after openscad.extraArgs."
         }
       }
     },
