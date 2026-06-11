@@ -75,11 +75,14 @@ export class ScadClient {
   }
 
   private static renderModeArgs(mode: RenderMode): string[] {
+    // --preview/--preview=throwntogether controls the rendering engine (OpenCSG vs CGAL)
+    // but does NOT set $preview=true for geometry formats (3mf, stl, etc.) — only PNG
+    // qualifies via canPreview() in OpenSCAD's source. We must set $preview explicitly.
     if (mode === RenderMode.ThrownTogether) {
-      return ["--preview=throwntogether"];
+      return ["--preview=throwntogether", "-D", "$preview=true"];
     }
     if (mode === RenderMode.Preview) {
-      return ["--preview"];
+      return ["--preview", "-D", "$preview=true"];
     }
     return ["--render"];
   }
