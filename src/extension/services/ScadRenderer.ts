@@ -48,12 +48,16 @@ export class ScadRenderer {
       .getConfiguration("openscad")
       .get<ModelFormat>("previewFormat", ModelFormat.ThreeMF);
 
+    const preview = workspace
+      .getConfiguration("openscad")
+      .get<boolean>("preview", true);
+
     try {
       const modelBuffer = await ScadClient.render(
         path,
         parameters,
         format,
-        this.onLog,
+        { preview, onStderr: this.onLog },
       );
       this.onComplete({ buffer: modelBuffer, format });
     } catch (err) {

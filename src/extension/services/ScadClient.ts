@@ -63,11 +63,21 @@ export class ScadClient {
     return setting ? ["--enable", "lazy-union"] : [];
   }
 
+  private static extraArgsFor(preview: boolean): string[] {
+    const config = workspace.getConfiguration("openscad");
+    const common = config.get<string[]>("extraArgs", []);
+    const modeSpecific = config.get<string[]>(
+      preview ? "extraArgsPreview" : "extraArgsExport",
+      [],
+    );
+    return [...common, ...modeSpecific];
+  }
+
   public static async render(
     scadPath: string,
     parameters: Record<string, string | number | boolean> = {},
     format: ModelFormat = ModelFormat.ThreeMF,
-    onStderr?: (chunk: string) => void,
+    { preview = false, onStderr }: { preview?: boolean; onStderr?: (chunk: string) => void } = {},
   ): Promise<Buffer> {
     // Kill any currently running process for this file to prevent runaway
     // spawn leaks when sliders emit rapid updates.
@@ -100,7 +110,11 @@ export class ScadClient {
         ...this.enableLazyUnion,
         "-o",
         tmpFile,
+        // OpenSCAD's canPreview() excludes geometry formats (3mf, stl, etc.) so
+        // --preview does not set $preview for these formats — must be set explicitly.
+        ...(preview ? ["-D", "$preview=true"] : []),
         ...paramArgs,
+        ...ScadClient.extraArgsFor(preview),
         scadPath,
       ];
 
