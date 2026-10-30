@@ -35,6 +35,7 @@ import {
 import { LogController } from "../controllers/LogController";
 import { bridge } from "../services/Bridge";
 import { defaultScene } from "../data/defaultScene";
+import { t } from "../i18n/t";
 import { sceneObjectMeta } from "../data/sceneObjectMeta";
 import "./aside/SidePanel";
 import "./atoms/SplitLayout";
@@ -111,6 +112,10 @@ export class App extends LitElement {
   @state()
   parameterContext: ParameterContext = {
     parameters: [],
+    labelMode: "name",
+    setLabelMode: (mode) => {
+      bridge.setParameterLabel(mode);
+    },
     parameterSets: {},
     activeSetName: undefined,
     overrides: {},
@@ -142,9 +147,15 @@ export class App extends LitElement {
     format: null,
     base64Data: null,
     isLoading: true,
-    loadingMessage: "Rendering SCAD...",
+    loadingMessage: t("preview.rendering"),
+    autoRender: false,
+    renderPending: false,
     export: bridge.exportModel,
     sendToSlicer: bridge.sendToSlicer,
+    renderNow: () => bridge.renderNow(),
+    toggleAutoRender: () => {
+      bridge.setAutoRender(!this.modelContext.autoRender);
+    },
   };
 
   @provide({ context: activeToolContext })
@@ -410,12 +421,25 @@ export class App extends LitElement {
           bridge.reportError("No parameters in update message");
         }
         break;
+      case "parameterLabel":
+        this.parameterContext = {
+          ...this.parameterContext,
+          labelMode: message.mode,
+        };
+        break;
       case "loadingState":
         this.logController.processLoadingState(message.loading);
         this.modelContext = {
           ...this.modelContext,
           isLoading: message.loading,
-          loadingMessage: message.message ?? "Rendering SCAD...",
+          loadingMessage: message.message ?? t("preview.rendering"),
+        };
+        break;
+      case "autoRender":
+        this.modelContext = {
+          ...this.modelContext,
+          autoRender: message.enabled,
+          renderPending: message.pending,
         };
         break;
       case "log":

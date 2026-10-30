@@ -1,5 +1,6 @@
 import type { IconName } from "../components/atoms/Icon";
 import { SceneObjectType } from "../contexts/SceneContext";
+import { t } from "../i18n/t";
 
 /**
  * Metadata for each scene object type.
@@ -13,34 +14,34 @@ export const sceneObjectMeta: Record<
   SceneObjectType,
   { label: string; icon: IconName; supportsActive: boolean }
 > = {
-  camera: { label: "Camera", icon: "camera", supportsActive: false },
+  camera: { label: t("object.camera"), icon: "camera", supportsActive: false },
   "cross-section-plane": {
-    label: "Cross-Section",
+    label: t("object.crossSection"),
     icon: "cross-section",
     supportsActive: true,
   },
   "ambient-light": {
-    label: "Ambient Light",
+    label: t("object.ambientLight"),
     icon: "light-ambient",
     supportsActive: true,
   },
   "directional-light": {
-    label: "Directional Light",
+    label: t("object.directionalLight"),
     icon: "light-directional",
     supportsActive: true,
   },
   "spot-light": {
-    label: "Spot Light",
+    label: t("object.spotLight"),
     icon: "light-spot",
     supportsActive: true,
   },
   "point-light": {
-    label: "Point Light",
+    label: t("object.pointLight"),
     icon: "light-point",
     supportsActive: true,
   },
   measurement: {
-    label: "Measurement",
+    label: t("object.measurement"),
     icon: "measurement",
     supportsActive: false,
   },

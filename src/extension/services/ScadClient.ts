@@ -4,7 +4,7 @@ import { readFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { platform } from "process";
-import { window, workspace } from "vscode";
+import { l10n, window, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 
 const platformDefaults: Record<string, string[]> = {
@@ -140,7 +140,7 @@ export class ScadClient {
         if (code !== 0) {
           const detail = stderrBuffer.trim() ? `\n${stderrBuffer.trim()}` : "";
           this.outputChannel.appendLine(`[OpenSCAD] Process exited with code ${code}${detail ? "" : " (no stderr output)"}`);
-          reject(new Error(`OpenSCAD process exited with code ${code}${detail}`));
+          reject(new Error(l10n.t("OpenSCAD process exited with code {0}", String(code)) + detail));
           return;
         }
 
@@ -149,7 +149,7 @@ export class ScadClient {
           this.outputChannel.appendLine(`[OpenSCAD] Render complete: ${tmpFile}`);
           resolve(buffer);
         } catch (err) {
-          reject(new Error(`Failed to read temporary output file: ${err}`));
+          reject(new Error(l10n.t("Failed to read temporary output file: {0}", String(err))));
         } finally {
           // Clean up the temp file
           try {
@@ -164,7 +164,7 @@ export class ScadClient {
         if (this.activeProcesses.get(scadPath) === process) {
           this.activeProcesses.delete(scadPath);
         }
-        const msg = `Failed to start OpenSCAD: ${err.message}\nExecutable path: ${execPath}`;
+        const msg = l10n.t("Failed to start OpenSCAD: {0}\nExecutable path: {1}", err.message, execPath);
         this.outputChannel.appendLine(`[OpenSCAD] ${msg}`);
         reject(new Error(msg));
       });

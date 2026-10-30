@@ -2,6 +2,7 @@ import { consume } from "@lit/context";
 import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { logContext, LogContext } from "../../contexts/LogContext";
+import { t } from "../../i18n/t";
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -150,18 +151,20 @@ export class ScadOutput extends LitElement {
   render() {
     return html`
       <div class="header">
-        <span>Output</span>
+        <span>${t("output.heading")}</span>
         <div class="header-actions">
           <vscode-toolbar-button
             icon="eraser"
             toggleable
             .checked=${this.logContext?.autoClear}
-            title="Auto-clear on new renders"
+            label=${t("output.autoClear")}
+            title=${t("output.autoClear.tip")}
             @change=${() => this.logContext?.toggleAutoClear()}
           ></vscode-toolbar-button>
           <vscode-toolbar-button
             icon="clear-all"
-            title="Clear Console"
+            label=${t("output.clear")}
+            title=${t("output.clear.tip")}
             @click=${() => this.logContext?.clear()}
           ></vscode-toolbar-button>
         </div>
@@ -180,7 +183,9 @@ export class ScadOutput extends LitElement {
               ${log.traces.length > 0
                 ? html`
                     <details class="log-trace-details">
-                      <summary>&nbsp;Show trace...</summary>
+                      <summary title=${t("output.showTrace.tip")}>
+                        &nbsp;${t("output.showTrace")}
+                      </summary>
                       <div class="log-trace">
                         ${log.traces.map(
                           (trace) =>

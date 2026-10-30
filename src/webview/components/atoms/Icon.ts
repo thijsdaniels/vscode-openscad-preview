@@ -119,6 +119,11 @@ const icons = {
     <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
     <path d="M 8 2 A 6 6 0 0 1 8 14 Z" fill="currentColor"/>
   `,
+  "auto-render": svg`
+    <path d="M 13 8 A 5 5 0 1 1 11.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polygon points="13.5,1.5 13.5,6 9,6" fill="currentColor"/>
+    <polygon points="6.5,5.5 6.5,10.5 10.5,8" fill="currentColor"/>
+  `,
 
   // Environments
   "env-none": svg`

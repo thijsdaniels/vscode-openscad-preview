@@ -1,5 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { t } from "../../i18n/t";
 
 @customElement("scad-collapsible")
 export class ScadCollapsible extends LitElement {
@@ -54,7 +55,11 @@ export class ScadCollapsible extends LitElement {
 
   render() {
     return html`
-      <div class="header" @click="${this.toggle}">
+      <div
+        class="header"
+        title=${t("collapsible.tip", this.heading)}
+        @click="${this.toggle}"
+      >
         <span class="heading">${this.heading}</span>
         <vscode-icon
           .name="${this.open ? "chevron-up" : "chevron-down"}"

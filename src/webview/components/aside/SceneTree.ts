@@ -13,6 +13,7 @@ import {
   SceneObjectType,
 } from "../../contexts/SceneContext";
 import { sceneObjectMeta } from "../../data/sceneObjectMeta";
+import { t } from "../../i18n/t";
 import "../atoms/Icon";
 
 const ADD_MENU_ITEMS: {
@@ -139,11 +140,12 @@ export class SceneTree extends LitElement {
   render() {
     return html`
       <div class="header">
-        <span class="heading">Scene</span>
+        <span class="heading">${t("scene.heading")}</span>
         <div class="header-actions">
           <vscode-toolbar-button
             icon="add"
-            label="Add object"
+            label=${t("scene.add")}
+            title=${t("scene.add.tip")}
             @click=${() => {
               this.addMenu.show = true;
             }}
@@ -176,6 +178,7 @@ export class SceneTree extends LitElement {
           disabled: !obj.active,
           hidden: !obj.visible,
         })}
+        title=${t("scene.row.tip", sceneObjectMeta[obj.type].label)}
         @click=${() => this.sceneContext.selectObject(obj.id)}
       >
         <scad-icon name=${sceneObjectMeta[obj.type].icon}></scad-icon>
@@ -183,7 +186,10 @@ export class SceneTree extends LitElement {
         <vscode-toolbar-button
           class="remove-button"
           icon="trash"
-          label="Remove"
+          label=${t("scene.remove")}
+          title=${isActiveCamera
+            ? t("scene.removeActiveCamera.tip")
+            : t("scene.remove.tip")}
           ?disabled=${isActiveCamera}
           @click=${(e: Event) => {
             e.stopPropagation();
@@ -194,7 +200,8 @@ export class SceneTree extends LitElement {
           ? html`
               <vscode-toolbar-button
                 icon="symbol-event"
-                label=${obj.active ? "Disable" : "Enable"}
+                label=${obj.active ? t("scene.disable") : t("scene.enable")}
+                title=${t("scene.active.tip")}
                 toggleable
                 .checked=${obj.active}
                 @click=${(e: Event) => e.stopPropagation()}
@@ -207,7 +214,10 @@ export class SceneTree extends LitElement {
           : nothing}
         <vscode-toolbar-button
           icon="eye"
-          label=${obj.visible ? "Hide" : "Show"}
+          label=${obj.visible ? t("scene.hide") : t("scene.show")}
+          title=${isActiveCamera
+            ? t("scene.visibleActiveCamera.tip")
+            : t("scene.visible.tip")}
           toggleable
           .checked=${obj.visible}
           ?disabled=${isActiveCamera}

@@ -1,0 +1,12 @@
+{
+  "extension.displayName": "OpenSCAD Preview",
+  "extension.description": "An interactive 3D preview environment for OpenSCAD (.scad) files.",
+  "config.previewFormat": "The format to use for the 3D preview. 3MF supports colors but requires OpenSCAD Nightly. STL is universally supported.",
+  "config.slicerExecutable": "Optional path to the slicer executable (e.g., Bambu Studio or PrusaSlicer). If left empty, the OS default application for the 3D model will be used.",
+  "config.executablePath": "Path to the OpenSCAD executable. Leave empty to use automatic detection or the system PATH.",
+  "config.enableLazyUnion": "Enable lazy unions, creating a multi-part exported object.",
+  "config.parameterLabel": "Label of the fields in the Parameters tab.",
+  "config.parameterLabel.name": "Variable name, formatted (default).",
+  "config.parameterLabel.description": "Comment written above the variable (accents allowed); the variable name when there is no comment.",
+  "command.showPanel": "Show OpenSCAD Preview"
+}

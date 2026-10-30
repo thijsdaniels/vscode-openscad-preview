@@ -5,6 +5,7 @@ import {
   SelectedObjectContext,
   selectedObjectContext,
 } from "../../contexts/SelectedObjectContext";
+import { MessageKey, t } from "../../i18n/t";
 import {
   NumberFieldChangeEvent,
   NumberFieldInputEvent,
@@ -48,144 +49,89 @@ export class ObjectProperties extends LitElement {
     const { properties } = this.selectedObjectContext ?? {};
 
     if (!properties) {
-      return html`<div class="empty-state">No object selected.</div>`;
+      return html`<div class="empty-state">${t("properties.empty")}</div>`;
     }
 
     if (properties.type === "cross-section-plane") {
       return html`
-        <scad-collapsible heading="Position" open>
-          ${this.renderField("X", "positionX", properties.positionX)}
-          ${this.renderField("Y", "positionY", properties.positionY)}
-          ${this.renderField("Z", "positionZ", properties.positionZ)}
-        </scad-collapsible>
-        <scad-collapsible heading="Rotation" open>
-          ${this.renderField("X", "rotationX", properties.rotationX, -180, 180)}
-          ${this.renderField("Y", "rotationY", properties.rotationY, -180, 180)}
-          ${this.renderField("Z", "rotationZ", properties.rotationZ, -180, 180)}
+        ${this.renderPosition(properties)}
+        <scad-collapsible heading=${t("properties.rotation")} open>
+          ${this.renderField("X", "rotationX", properties.rotationX, "properties.rotationX.tip", -180, 180)}
+          ${this.renderField("Y", "rotationY", properties.rotationY, "properties.rotationY.tip", -180, 180)}
+          ${this.renderField("Z", "rotationZ", properties.rotationZ, "properties.rotationZ.tip", -180, 180)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "ambient-light") {
       return html`
-        <scad-collapsible heading="Light" open>
-          ${this.renderField(
-            "Intensity",
-            "intensity",
-            properties.intensity,
-            0,
-            10,
-            0.01,
-          )}
+        <scad-collapsible heading=${t("properties.light")} open>
+          ${this.renderIntensity(properties.intensity)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "directional-light") {
       return html`
-        <scad-collapsible heading="Position" open>
-          ${this.renderField("X", "positionX", properties.positionX)}
-          ${this.renderField("Y", "positionY", properties.positionY)}
-          ${this.renderField("Z", "positionZ", properties.positionZ)}
-        </scad-collapsible>
-        <scad-collapsible heading="Light" open>
-          ${this.renderField(
-            "Intensity",
-            "intensity",
-            properties.intensity,
-            0,
-            10,
-            0.01,
-          )}
+        ${this.renderPosition(properties)}
+        <scad-collapsible heading=${t("properties.light")} open>
+          ${this.renderIntensity(properties.intensity)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "spot-light") {
       return html`
-        <scad-collapsible heading="Position" open>
-          ${this.renderField("X", "positionX", properties.positionX)}
-          ${this.renderField("Y", "positionY", properties.positionY)}
-          ${this.renderField("Z", "positionZ", properties.positionZ)}
-        </scad-collapsible>
-        <scad-collapsible heading="Light" open>
-          ${this.renderField(
-            "Intensity",
-            "intensity",
-            properties.intensity,
-            0,
-            10,
-            0.01,
-          )}
-          ${this.renderField("Angle", "angle", properties.angle, 0, 90, 0.1)}
-          ${this.renderField(
-            "Penumbra",
-            "penumbra",
-            properties.penumbra,
-            0,
-            1,
-            0.01,
-          )}
+        ${this.renderPosition(properties)}
+        <scad-collapsible heading=${t("properties.light")} open>
+          ${this.renderIntensity(properties.intensity)}
+          ${this.renderField(t("properties.angle"), "angle", properties.angle, "properties.angle.tip", 0, 90, 0.1)}
+          ${this.renderField(t("properties.penumbra"), "penumbra", properties.penumbra, "properties.penumbra.tip", 0, 1, 0.01)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "camera") {
       return html`
-        <scad-collapsible heading="Position" open>
-          ${this.renderField("X", "positionX", properties.positionX)}
-          ${this.renderField("Y", "positionY", properties.positionY)}
-          ${this.renderField("Z", "positionZ", properties.positionZ)}
+        ${this.renderPosition(properties)}
+        <scad-collapsible heading=${t("properties.rotation")} open>
+          ${this.renderDisplayField("X", properties.rotationX, "°", "properties.rotationX.tip")}
+          ${this.renderDisplayField("Y", properties.rotationY, "°", "properties.rotationY.tip")}
+          ${this.renderDisplayField("Z", properties.rotationZ, "°", "properties.rotationZ.tip")}
         </scad-collapsible>
-        <scad-collapsible heading="Rotation" open>
-          ${this.renderDisplayField("X", properties.rotationX, "°")}
-          ${this.renderDisplayField("Y", properties.rotationY, "°")}
-          ${this.renderDisplayField("Z", properties.rotationZ, "°")}
-        </scad-collapsible>
-        <scad-collapsible heading="Lens" open>
-          ${this.renderField("FOV", "fov", properties.fov, 1, 170, 1)}
+        <scad-collapsible heading=${t("properties.lens")} open>
+          ${this.renderField(t("properties.fov"), "fov", properties.fov, "properties.fov.tip", 1, 170, 1)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "point-light") {
       return html`
-        <scad-collapsible heading="Position" open>
-          ${this.renderField("X", "positionX", properties.positionX)}
-          ${this.renderField("Y", "positionY", properties.positionY)}
-          ${this.renderField("Z", "positionZ", properties.positionZ)}
-        </scad-collapsible>
-        <scad-collapsible heading="Light" open>
-          ${this.renderField(
-            "Intensity",
-            "intensity",
-            properties.intensity,
-            0,
-            10,
-            0.01,
-          )}
-          ${this.renderField("Decay", "decay", properties.decay, 0, 10, 0.01)}
+        ${this.renderPosition(properties)}
+        <scad-collapsible heading=${t("properties.light")} open>
+          ${this.renderIntensity(properties.intensity)}
+          ${this.renderField(t("properties.decay"), "decay", properties.decay, "properties.decay.tip", 0, 10, 0.01)}
         </scad-collapsible>
       `;
     }
 
     if (properties.type === "measurement") {
       return html`
-        <scad-collapsible heading="Point A" open>
-          ${this.renderDisplayField("X", properties.pointAX, " mm")}
-          ${this.renderDisplayField("Y", properties.pointAY, " mm")}
-          ${this.renderDisplayField("Z", properties.pointAZ, " mm")}
+        <scad-collapsible heading=${t("properties.pointA")} open>
+          ${this.renderDisplayField("X", properties.pointAX, " mm", "properties.pointA.tip")}
+          ${this.renderDisplayField("Y", properties.pointAY, " mm", "properties.pointA.tip")}
+          ${this.renderDisplayField("Z", properties.pointAZ, " mm", "properties.pointA.tip")}
         </scad-collapsible>
-        <scad-collapsible heading="Point B" open>
-          ${this.renderDisplayField("X", properties.pointBX, " mm")}
-          ${this.renderDisplayField("Y", properties.pointBY, " mm")}
-          ${this.renderDisplayField("Z", properties.pointBZ, " mm")}
+        <scad-collapsible heading=${t("properties.pointB")} open>
+          ${this.renderDisplayField("X", properties.pointBX, " mm", "properties.pointB.tip")}
+          ${this.renderDisplayField("Y", properties.pointBY, " mm", "properties.pointB.tip")}
+          ${this.renderDisplayField("Z", properties.pointBZ, " mm", "properties.pointB.tip")}
         </scad-collapsible>
-        <scad-collapsible heading="Distance" open>
-          ${this.renderDisplayField("ΔX", properties.deltaX, " mm")}
-          ${this.renderDisplayField("ΔY", properties.deltaY, " mm")}
-          ${this.renderDisplayField("ΔZ", properties.deltaZ, " mm")}
-          ${this.renderDisplayField("Total", properties.distance, " mm")}
+        <scad-collapsible heading=${t("properties.distance")} open>
+          ${this.renderDisplayField("ΔX", properties.deltaX, " mm", "properties.delta.tip")}
+          ${this.renderDisplayField("ΔY", properties.deltaY, " mm", "properties.delta.tip")}
+          ${this.renderDisplayField("ΔZ", properties.deltaZ, " mm", "properties.delta.tip")}
+          ${this.renderDisplayField(t("properties.total"), properties.distance, " mm", "properties.total.tip")}
         </scad-collapsible>
       `;
     }
@@ -193,9 +139,41 @@ export class ObjectProperties extends LitElement {
     return nothing;
   }
 
-  private renderDisplayField(label: string, value: number, suffix = "") {
+  /** Position section shared by every positionable object. */
+  private renderPosition(properties: {
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+  }) {
     return html`
-      <scad-field label=${label}>
+      <scad-collapsible heading=${t("properties.position")} open>
+        ${this.renderField("X", "positionX", properties.positionX, "properties.positionX.tip")}
+        ${this.renderField("Y", "positionY", properties.positionY, "properties.positionY.tip")}
+        ${this.renderField("Z", "positionZ", properties.positionZ, "properties.positionZ.tip")}
+      </scad-collapsible>
+    `;
+  }
+
+  private renderIntensity(value: number) {
+    return this.renderField(
+      t("properties.intensity"),
+      "intensity",
+      value,
+      "properties.intensity.tip",
+      0,
+      10,
+      0.01,
+    );
+  }
+
+  private renderDisplayField(
+    label: string,
+    value: number,
+    suffix: string,
+    tip: MessageKey,
+  ) {
+    return html`
+      <scad-field label=${label} tooltip=${t(tip)}>
         <scad-number-field
           readonly
           .value=${value}
@@ -209,12 +187,13 @@ export class ObjectProperties extends LitElement {
     label: string,
     key: string,
     value: number,
+    tip: MessageKey,
     min?: number,
     max?: number,
     step = 0.1,
   ) {
     return html`
-      <scad-field label=${label}>
+      <scad-field label=${label} tooltip=${t(tip)}>
         <scad-number-field
           .value=${value}
           .min=${min}

@@ -34,6 +34,7 @@ test("ScadParser - extracts parameters successfully", () => {
       type: "number",
       group: undefined,
       value: 42,
+      description: "An un-grouped variable",
     },
     {
       name: "width",
@@ -95,9 +96,62 @@ test("ScadParser - skips expression-valued variables", () => {
   const parser = new ScadParser(scadContent);
 
   assert.deepStrictEqual(parser.parameters, [
-    { name: "full_width", type: "number", group: undefined, value: 254 },
+    {
+      name: "full_width",
+      type: "number",
+      group: undefined,
+      value: 254,
+      description: "Literal values — these should be included",
+    },
     { name: "surface_thickness", type: "number", group: undefined, value: 3.5 },
     { name: "label", type: "string", group: undefined, value: "default" },
+  ]);
+});
+
+test("ScadParser - reads the description from the comment above", () => {
+  const scadContent = `
+    /* [Géométrie] */
+    // Épaisseur de la plaque (mm)
+    Epaisseur_Plaque = 4; //[3:1:10]
+    alias = Epaisseur_Plaque;
+    // Detached comment
+
+    Hauteur = 60; // Trailing description
+    // Above wins
+    Largeur = 10; // Trailing loses
+
+    /* [Masqué] */
+    // Internal
+    interne = 5;
+  `;
+
+  const parser = new ScadParser(scadContent);
+
+  assert.deepStrictEqual(parser.parameters, [
+    {
+      name: "Epaisseur_Plaque",
+      type: "number",
+      group: "Géométrie",
+      value: 4,
+      min: 3,
+      max: 10,
+      step: 1,
+      description: "Épaisseur de la plaque (mm)",
+    },
+    {
+      name: "Hauteur",
+      type: "number",
+      group: "Géométrie",
+      value: 60,
+      description: "Trailing description",
+    },
+    {
+      name: "Largeur",
+      type: "number",
+      group: "Géométrie",
+      value: 10,
+      description: "Above wins",
+    },
   ]);
 });
 
