@@ -41,6 +41,19 @@ export class ScadSession {
   private _onLog = new EventEmitter<string>();
   public readonly onLog = this._onLog.event;
 
+  private _onAutoRenderChanged = new EventEmitter<{
+    enabled: boolean;
+    pending: boolean;
+  }>();
+  public readonly onAutoRenderChanged = this._onAutoRenderChanged.event;
+
+  // When off (default), file and parameter changes are queued until the user
+  // asks for a render; when latched on, every change is rendered at once.
+  private _autoRender = false;
+  private renderPending = false;
+  // The first render (at launch) always happens, whatever the mode.
+  private hasRendered = false;
+
   constructor(public readonly documentUri: Uri) {
     this.scadRenderer = new ScadRenderer({
       onStart: () => this._onRenderStarted.fire(),
@@ -61,10 +74,7 @@ export class ScadSession {
         const parser = new ScadParser(content);
         this.scadParameters.updateDefinitions(parser.parameters);
 
-        this.scadRenderer.render(
-          this.documentUri.fsPath,
-          this.scadParameters.getActiveValues(),
-        );
+        this.requestRender();
       },
     });
 
@@ -98,10 +108,7 @@ export class ScadSession {
                 this.scadParameters.setActiveSet(activeSetName);
                 
                 if (JSON.stringify(this.scadParameters.getActiveValues()) !== oldValues) {
-                  this.scadRenderer.render(
-                    this.documentUri.fsPath,
-                    this.scadParameters.getActiveValues(),
-                  );
+                  this.requestRender();
                 }
               }
             }
@@ -127,6 +134,47 @@ export class ScadSession {
     }
   }
 
+  public get autoRender(): { enabled: boolean; pending: boolean } {
+    return { enabled: this._autoRender, pending: this.renderPending };
+  }
+
+  /** Turns automatic rendering on or off; turning it on flushes pending changes. */
+  public setAutoRender(enabled: boolean) {
+    this._autoRender = enabled;
+    if (enabled && this.renderPending) {
+      this.renderPending = false;
+      this.requestRender();
+    }
+    this._onAutoRenderChanged.fire(this.autoRender);
+  }
+
+  /** Renders the current state once, whatever the automatic mode. */
+  public renderNow() {
+    this.renderPending = false;
+    this.hasRendered = true;
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+    );
+    this._onAutoRenderChanged.fire(this.autoRender);
+  }
+
+  private requestRender() {
+    if (!this._autoRender && this.hasRendered) {
+      if (!this.renderPending) {
+        this.renderPending = true;
+        this._onAutoRenderChanged.fire(this.autoRender);
+      }
+      return;
+    }
+
+    this.hasRendered = true;
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+    );
+  }
+
   public get currentParameters(): ScadParameter[] {
     return this.scadParameters.getParameters();
   }
@@ -149,10 +197,7 @@ export class ScadSession {
   ) {
     this.scadParameters.updateValue(name, value);
 
-    this.scadRenderer.render(
-      this.documentUri.fsPath,
-      this.scadParameters.getActiveValues(),
-    );
+    this.requestRender();
   }
 
   public async saveParameterSet(name: string) {
@@ -199,10 +244,7 @@ export class ScadSession {
 
   public applyParameterSet(name: string | undefined) {
     this.scadParameters.setActiveSet(name);
-    this.scadRenderer.render(
-      this.documentUri.fsPath,
-      this.scadParameters.getActiveValues(),
-    );
+    this.requestRender();
   }
 
   public async exportFormat(format: ModelFormat): Promise<Buffer> {
@@ -220,5 +262,6 @@ export class ScadSession {
     this._onRenderCompleted.dispose();
     this._onRenderError.dispose();
     this._onParametersChanged.dispose();
+    this._onAutoRenderChanged.dispose();
   }
 }

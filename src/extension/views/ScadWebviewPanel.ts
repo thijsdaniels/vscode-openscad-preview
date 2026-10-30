@@ -6,6 +6,7 @@ import {
   Webview,
   WebviewPanel,
   env,
+  l10n,
   window,
   workspace,
 } from "vscode";
@@ -14,6 +15,7 @@ import * as path from "path";
 import * as cp from "child_process";
 import { ExtensionToWebviewMessage } from "../../shared/types/ExtensionToWebviewMessage";
 import { ModelFormat } from "../../shared/types/ModelFormat";
+import { ParameterLabelMode } from "../../shared/types/ParameterLabelMode";
 import { WebviewToExtensionMessage } from "../../shared/types/WebviewToExtensionMessage";
 import { ScadSession } from "../core/ScadSession";
 
@@ -68,25 +70,27 @@ export class ScadWebviewPanel {
             return;
           case "promptSaveParameterSet":
             window.showInputBox({
-              prompt: "Enter new parameter set name:",
-              placeHolder: "Preset Name",
+              prompt: l10n.t("Enter new parameter set name:"),
+              placeHolder: l10n.t("Preset Name"),
             }).then((name) => {
               if (name && name.trim()) {
                 this.session.saveParameterSet(name.trim());
               }
             });
             return;
-          case "deleteParameterSet":
+          case "deleteParameterSet": {
+            const deleteLabel = l10n.t("Delete");
             window.showWarningMessage(
-              `Are you sure you want to delete the "${message.name}" parameter set?`,
+              l10n.t('Are you sure you want to delete the "{0}" parameter set?', message.name),
               { modal: true },
-              "Delete"
+              deleteLabel
             ).then((selection) => {
-              if (selection === "Delete") {
+              if (selection === deleteLabel) {
                 this.session.deleteParameterSet(message.name);
               }
             });
             return;
+          }
           case "applyParameterSet":
             this.session.applyParameterSet(message.name);
             return;
@@ -96,11 +100,23 @@ export class ScadWebviewPanel {
           case "sendToSlicer":
             this.sendToSlicer();
             return;
+          case "setAutoRender":
+            this.session.setAutoRender(message.enabled);
+            return;
+          case "renderNow":
+            this.session.renderNow();
+            return;
+          case "setParameterLabel":
+            // Stored globally; the configuration listener echoes it back.
+            workspace
+              .getConfiguration("openscad")
+              .update("parameterLabel", message.mode, true);
+            return;
           case "persistScene":
             this.workspaceState.update(this.sceneStateKey, message.snapshot);
             return;
           case "error":
-            window.showErrorMessage(`Preview Error: ${message.message}`);
+            window.showErrorMessage(l10n.t("Preview Error: {0}", message.message));
             return;
         }
       },
@@ -114,7 +130,7 @@ export class ScadWebviewPanel {
         this.postMessage({
           type: "loadingState",
           loading: true,
-          message: "Generating model...",
+          message: l10n.t("Generating model..."),
         });
       },
       null,
@@ -127,7 +143,7 @@ export class ScadWebviewPanel {
           this.postMessage({
             type: "loadingState",
             loading: true,
-            message: "Loading model...",
+            message: l10n.t("Loading model..."),
           });
           return;
         }
@@ -155,16 +171,17 @@ export class ScadWebviewPanel {
         // Show the error in the VS Code notification area and direct the user
         // to the output channel for the full OpenSCAD stderr output.
         const msg = err.message;
+        const showOutputLabel = l10n.t("Show Output");
         window.showErrorMessage(
-          `OpenSCAD render failed: ${msg.split("\n")[0]}`,
-          "Show Output"
+          l10n.t("OpenSCAD render failed: {0}", msg.split("\n")[0]),
+          showOutputLabel
         ).then((choice) => {
-          if (choice === "Show Output") {
+          if (choice === showOutputLabel) {
             // The output channel is named "OpenSCAD Preview" — reveal it.
             // We can't reference it directly here, but the user can open it
             // from View > Output and select "OpenSCAD Preview".
             window.showInformationMessage(
-              'Open the Output panel and select "OpenSCAD Preview" from the dropdown to see the full error.'
+              l10n.t('Open the Output panel and select "OpenSCAD Preview" from the dropdown to see the full error.')
             );
           }
         });
@@ -191,6 +208,29 @@ export class ScadWebviewPanel {
             activeSetName,
             overrides,
           });
+        }
+      },
+      null,
+      this.disposables,
+    );
+
+    workspace.onDidChangeConfiguration(
+      (event) => {
+        if (
+          this.isWebviewReady &&
+          event.affectsConfiguration("openscad.parameterLabel")
+        ) {
+          this.postParameterLabel();
+        }
+      },
+      null,
+      this.disposables,
+    );
+
+    this.session.onAutoRenderChanged(
+      ({ enabled, pending }) => {
+        if (this.isWebviewReady) {
+          this.postMessage({ type: "autoRender", enabled, pending });
         }
       },
       null,
@@ -231,18 +271,19 @@ export class ScadWebviewPanel {
       ),
     );
 
+    // `lang` carries VS Code's display language to the webview translations.
     return /* html */ `
 		<!DOCTYPE html>
-		<html>
+		<html lang="${env.language}">
 			<head>
 				<meta charset="UTF-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<title>OpenSCAD Preview</title>
+				<title>${l10n.t("OpenSCAD Preview")}</title>
 				<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
         <link rel="stylesheet" href="${codiconUri}" id="vscode-codicon-stylesheet">
 				<style>
-					body { 
-						margin: 0; 
+					body {
+						margin: 0;
 						padding: 0;
 						height: 100vh;
 						display: flex;
@@ -269,12 +310,23 @@ export class ScadWebviewPanel {
 	`;
   }
 
+  private postParameterLabel() {
+    const mode = workspace
+      .getConfiguration("openscad")
+      .get<ParameterLabelMode>("parameterLabel", "name");
+    this.postMessage({ type: "parameterLabel", mode });
+  }
+
   private pushInitialState() {
     // Send the persisted scene snapshot first so the webview can hydrate
     // before any other state arrives. `null` means "no saved scene" — the
     // webview falls back to its built-in default scene.
     const snapshot = this.workspaceState.get<unknown>(this.sceneStateKey, null);
     this.postMessage({ type: "loadScene", snapshot });
+
+    // The webview is recreated on tab re-focus: restore the toggle state.
+    this.postMessage({ type: "autoRender", ...this.session.autoRender });
+    this.postParameterLabel();
 
     // Send initial parameters
     const params = this.session.currentParameters;
@@ -311,16 +363,16 @@ export class ScadWebviewPanel {
         {
           value: ModelFormat.ThreeMF,
           label: "3MF",
-          description: "Supports colors but requires OpenSCAD Nightly.",
+          description: l10n.t("Supports colors but requires OpenSCAD Nightly."),
         },
         {
           value: ModelFormat.STL,
           label: "STL",
-          description: "Universally supported.",
+          description: l10n.t("Universally supported."),
         },
       ] as const,
       {
-        title: "Select Export Format",
+        title: l10n.t("Select Export Format"),
       },
     );
 
@@ -344,7 +396,7 @@ export class ScadWebviewPanel {
     const uri = await window.showSaveDialog({
       defaultUri,
       filters,
-      title: `Export ${format.label}`,
+      title: l10n.t("Export {0}", format.label),
     });
 
     if (uri) {
@@ -353,7 +405,7 @@ export class ScadWebviewPanel {
         await window.withProgress(
           {
             location: ProgressLocation.Notification,
-            title: `Rendering ${format.label}...`,
+            title: l10n.t("Rendering {0}...", format.label),
             cancellable: false,
           },
           async () => {
@@ -363,10 +415,12 @@ export class ScadWebviewPanel {
         );
 
         window.showInformationMessage(
-          `Successfully exported ${format.label} to ${uri.fsPath}`,
+          l10n.t("Successfully exported {0} to {1}", format.label, uri.fsPath),
         );
       } catch (error) {
-        window.showErrorMessage(`Failed to export ${format.label}: ${error}`);
+        window.showErrorMessage(
+          l10n.t("Failed to export {0}: {1}", format.label, String(error)),
+        );
       }
     }
   }
@@ -376,16 +430,16 @@ export class ScadWebviewPanel {
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
-          title: "Sending to Slicer...",
+          title: l10n.t("Sending to Slicer..."),
           cancellable: false,
         },
         async () => {
           const config = workspace.getConfiguration("openscad");
           const formatValue = config.get<string>("previewFormat") || "3mf";
           const format = formatValue === "stl" ? ModelFormat.STL : ModelFormat.ThreeMF;
-          
+
           const buffer = await this.session.exportFormat(format);
-          
+
           const activeSetName = this.session.activeSetName;
           const appendix = activeSetName ? `_${activeSetName.replace(/[^a-z0-9]/gi, '_')}` : "";
           const timestamp = new Date().getTime();
@@ -394,15 +448,17 @@ export class ScadWebviewPanel {
             `openscad_preview${appendix}_${timestamp}.${format}`,
           );
           const uri = Uri.file(tmpFilePath);
-          
+
           await workspace.fs.writeFile(uri, new Uint8Array(buffer));
-          
+
           const slicerExecutable = config.get<string>("slicerExecutable");
-          
+
           if (slicerExecutable && slicerExecutable.trim() !== "") {
             cp.execFile(slicerExecutable.trim(), [tmpFilePath], (error) => {
               if (error) {
-                window.showErrorMessage(`Failed to launch slicer: ${error.message}`);
+                window.showErrorMessage(
+                  l10n.t("Failed to launch slicer: {0}", error.message),
+                );
               }
             });
           } else {
@@ -411,7 +467,9 @@ export class ScadWebviewPanel {
         },
       );
     } catch (error) {
-      window.showErrorMessage(`Failed to send to slicer: ${error}`);
+      window.showErrorMessage(
+        l10n.t("Failed to send to slicer: {0}", String(error)),
+      );
     }
   }
 

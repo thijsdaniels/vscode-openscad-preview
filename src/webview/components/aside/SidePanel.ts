@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { MessageKey, t } from "../../i18n/t";
 import "./Environment";
 import "./ObjectProperties";
 import "./Parameters";
@@ -14,13 +15,29 @@ declare global {
 interface Tab {
   id: string;
   icon: string;
-  label: string;
+  label: MessageKey;
+  tip: MessageKey;
 }
 
 const tabs: Tab[] = [
-  { id: "parameters", icon: "settings", label: "Parameters" },
-  { id: "properties", icon: "symbol-misc", label: "Properties" },
-  { id: "environment", icon: "globe", label: "Environment" },
+  {
+    id: "parameters",
+    icon: "settings",
+    label: "tab.parameters",
+    tip: "tab.parameters.tip",
+  },
+  {
+    id: "properties",
+    icon: "symbol-misc",
+    label: "tab.properties",
+    tip: "tab.properties.tip",
+  },
+  {
+    id: "environment",
+    icon: "globe",
+    label: "tab.environment",
+    tip: "tab.environment.tip",
+  },
 ];
 
 @customElement("scad-side-panel")
@@ -94,13 +111,16 @@ export class SidePanel extends LitElement {
       </div>
       <div class="tabbed-area">
         <div class="tab-header">
-          <div class="tab-heading">${this.activeTab.label}</div>
+          <div class="tab-heading" title=${t(this.activeTab.tip)}>
+            ${t(this.activeTab.label)}
+          </div>
           <div class="tab-strip">
             ${tabs.map(
               (tab) => html`
                 <vscode-toolbar-button
                   icon=${tab.icon}
-                  label=${tab.label}
+                  label=${t(tab.label)}
+                  title=${t(tab.tip)}
                   toggleable
                   .checked=${tab == this.activeTab}
                   @change=${() => {

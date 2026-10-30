@@ -6,6 +6,7 @@ import {
   ActiveToolContext,
   activeToolContext,
 } from "../../contexts/ActiveToolContext";
+import { MessageKey, t } from "../../i18n/t";
 import type { IconName } from "../atoms/Icon";
 import "../atoms/Icon";
 import "../atoms/IconButton";
@@ -19,34 +20,74 @@ declare global {
 interface ToolVariant {
   id: string;
   icon: IconName;
-  label: string;
+  label: MessageKey;
+  tip: MessageKey;
 }
 
 interface Tool {
   id: ActiveTool;
   icon: IconName;
-  label: string;
+  label: MessageKey;
+  tip: MessageKey;
   variants?: ToolVariant[];
   defaultVariant?: string;
 }
 
 const groups: Tool[][] = [
-  [{ id: ActiveTool.Select, icon: "tool-select", label: "Select" }],
   [
-    { id: ActiveTool.Move, icon: "tool-move", label: "Move" },
-    { id: ActiveTool.Rotate, icon: "tool-rotate", label: "Rotate" },
-    { id: ActiveTool.Scale, icon: "tool-scale", label: "Scale" },
+    {
+      id: ActiveTool.Select,
+      icon: "tool-select",
+      label: "tool.select",
+      tip: "tool.select.tip",
+    },
+  ],
+  [
+    {
+      id: ActiveTool.Move,
+      icon: "tool-move",
+      label: "tool.move",
+      tip: "tool.move.tip",
+    },
+    {
+      id: ActiveTool.Rotate,
+      icon: "tool-rotate",
+      label: "tool.rotate",
+      tip: "tool.rotate.tip",
+    },
+    {
+      id: ActiveTool.Scale,
+      icon: "tool-scale",
+      label: "tool.scale",
+      tip: "tool.scale.tip",
+    },
   ],
   [
     {
       id: ActiveTool.Measure,
       icon: "tool-measure",
-      label: "Measure",
+      label: "tool.measure",
+      tip: "tool.measure.tip",
       defaultVariant: "vertex",
       variants: [
-        { id: "vertex", icon: "snap-vertex", label: "Vertex" },
-        { id: "edge", icon: "snap-edge", label: "Edge" },
-        { id: "face", icon: "snap-face", label: "Face" },
+        {
+          id: "vertex",
+          icon: "snap-vertex",
+          label: "tool.measure.vertex",
+          tip: "tool.measure.vertex.tip",
+        },
+        {
+          id: "edge",
+          icon: "snap-edge",
+          label: "tool.measure.edge",
+          tip: "tool.measure.edge.tip",
+        },
+        {
+          id: "face",
+          icon: "snap-face",
+          label: "tool.measure.face",
+          tip: "tool.measure.face.tip",
+        },
       ],
     },
   ],
@@ -120,7 +161,8 @@ export class Toolbar extends LitElement {
     return html`
       <div class="tool">
         <scad-icon-button
-          label=${tool.label}
+          label=${t(tool.label)}
+          tooltip=${t(tool.tip)}
           toggleable
           .checked=${this.activeToolContext?.activeTool === tool.id}
           @change=${() => {
@@ -137,7 +179,8 @@ export class Toolbar extends LitElement {
                   ${tool.variants.map(
                     (variant) => html`
                       <scad-icon-button
-                        label=${variant.label}
+                        label=${t(variant.label)}
+                        tooltip=${t(variant.tip)}
                         toggleable
                         .checked=${activeVariant === variant.id}
                         @change=${() => {
