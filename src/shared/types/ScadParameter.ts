@@ -1,3 +1,5 @@
+import { StringEditor } from "./StringEditor";
+
 interface ParameterMetadata {
   name: string;
   description?: string;
@@ -27,6 +29,9 @@ export interface StringParameter extends ParameterMetadata {
   type: "string";
   value: string;
   options?: ParameterOption<string>[];
+  editor?: StringEditor;
+  /** File editor only: accepted extensions, without dot. Empty = any file. */
+  extensions?: string[];
 }
 
 export type ScadParameter =

@@ -42,11 +42,13 @@ export class Field extends LitElement {
   `;
 
   @property() label = "";
+  /** Hover text explaining the field; falls back to `label`. */
+  @property() tooltip = "";
 
   render() {
     return html`
       <div class="label-row">
-        <span class="label" title=${this.label}>${this.label}</span>
+        <span class="label" title=${this.tooltip || this.label}>${this.label}</span>
         <slot name="actions"></slot>
       </div>
       <div class="value">

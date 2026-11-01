@@ -8,7 +8,7 @@ let sessionManager: ScadSessionManager | undefined;
 export function activate(context: ExtensionContext) {
   context.subscriptions.push(ScadClient.outputChannel);
 
-  sessionManager = new ScadSessionManager();
+  sessionManager = new ScadSessionManager(context.workspaceState);
 
   const showPanelDisposable = registerShowPanelCommand(context, sessionManager);
   context.subscriptions.push(showPanelDisposable);

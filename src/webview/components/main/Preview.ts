@@ -1,5 +1,5 @@
 import { consume } from "@lit/context";
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import { Color } from "three";
 import {
@@ -11,6 +11,7 @@ import {
   viewOptionsContext,
   ViewOptionsContext,
 } from "../../contexts/ViewOptionsContext";
+import { t } from "../../i18n/t";
 import { Stage, Theme } from "../../preview/Stage";
 
 declare global {
@@ -179,7 +180,7 @@ export class Preview extends LitElement {
 
     this.themeObserver.observe(document.body, {
       attributes: true,
-      attributeFilter: ["class", "data-vscode-theme"],
+      attributeFilter: ["class", "data-vscode-theme", "style"],
     });
   }
 
@@ -197,19 +198,35 @@ export class Preview extends LitElement {
   }
 
   render() {
-    return html`
-      ${this.modelContext?.isLoading || !this.modelContext?.base64Data
-        ? html`
-            <div id="loading-overlay">
-              <div class="spinner"></div>
-              <div>
-                ${this.modelContext?.loadingMessage ?? "Rendering SCAD..."}
-              </div>
-            </div>
-          `
-        : ""}
-      <div id="canvas-container"></div>
-    `;
+    return html`${this.renderOverlay()}
+      <div id="canvas-container"></div>`;
+  }
+
+  private renderOverlay() {
+    const model = this.modelContext;
+    // Nothing rendered yet and waiting for a click: no spinner.
+    if (
+      model &&
+      !model.autoRender &&
+      model.renderPending &&
+      !model.base64Data
+    ) {
+      return html`<div id="loading-overlay">
+        <div>${t("preview.idle")}</div>
+      </div>`;
+    }
+    if (model?.isLoading || !model?.base64Data) {
+      return html`<div id="loading-overlay">
+        <div class="spinner"></div>
+        <div>${model?.loadingMessage ?? t("preview.rendering")}</div>
+      </div>`;
+    }
+    if (model.renderPending) {
+      return html`<div id="loading-overlay">
+        <div>${t("preview.pending")}</div>
+      </div>`;
+    }
+    return nothing;
   }
 }
 
@@ -246,8 +263,10 @@ function getTheme(): Theme {
       0.05,
     );
 
+  // openscad.defaultColor, empty → editor foreground.
   const additive = new Color(
-    styles.getPropertyValue("--vscode-editor-foreground").trim(),
+    styles.getPropertyValue("--scad-default-color").trim() ||
+      styles.getPropertyValue("--vscode-editor-foreground").trim(),
   );
 
   const subtractive = new Color(

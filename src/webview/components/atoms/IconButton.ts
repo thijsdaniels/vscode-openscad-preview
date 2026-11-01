@@ -45,22 +45,37 @@ export class IconButton extends LitElement {
       color: var(--vscode-inputOption-activeForeground);
     }
 
+    button.latched {
+      background: var(--vscode-button-secondaryBackground, #8884);
+      outline: 1px solid var(--vscode-disabledForeground);
+      color: var(--vscode-disabledForeground);
+    }
+
     ::slotted(svg) {
       display: block;
     }
   `;
 
   @property() label = "";
+  /** Hover text explaining what the button does; falls back to `label`. */
+  @property() tooltip = "";
   @property({ type: Boolean, reflect: true }) toggleable = false;
   @property({ type: Boolean, reflect: true }) checked = false;
+  /** Grey "locked on" look, driven by the owner (not toggled by clicks). */
+  @property({ type: Boolean, reflect: true }) latched = false;
 
   render() {
     return html`
       <button
         aria-label=${this.label || nothing}
+        title=${this.tooltip || this.label || nothing}
         role=${this.toggleable ? "switch" : nothing}
         aria-checked=${this.toggleable ? this.checked : nothing}
-        class=${this.toggleable && this.checked ? "checked" : ""}
+        class=${this.latched
+          ? "latched"
+          : this.toggleable && this.checked
+            ? "checked"
+            : ""}
         @click=${this.handleClick}
       >
         <slot></slot>
@@ -72,8 +87,6 @@ export class IconButton extends LitElement {
     if (this.toggleable) {
       this.checked = !this.checked;
     }
-    this.dispatchEvent(
-      new Event("change", { bubbles: true, composed: true }),
-    );
+    this.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
   }
 }

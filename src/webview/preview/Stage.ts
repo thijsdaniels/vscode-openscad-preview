@@ -27,16 +27,19 @@ import { ActiveTool } from "../contexts/ActiveToolContext";
 import { ModelContext } from "../contexts/ModelContext";
 import { ObjectProperties } from "../contexts/SelectedObjectContext";
 import { SceneObjectType } from "../contexts/SceneContext";
+import { sceneObjectMeta } from "../data/sceneObjectMeta";
 import {
   Environment,
   RenderMode,
   ViewOptionsContext,
 } from "../contexts/ViewOptionsContext";
+import { isClippedAway } from "./isClippedAway";
 import { XRayPass } from "./passes/XRayPass";
 import { AmbientLightRig } from "./rigs/AmbientLightRig";
 import { CameraRig } from "./rigs/CameraRig";
 import { DirectionalLightRig } from "./rigs/DirectionalLightRig";
 import { MeasurementRig } from "./rigs/MeasurementRig";
+import { ModelPartPose, ModelPartRig } from "./rigs/ModelPartRig";
 import { PointLightRig } from "./rigs/PointLightRig";
 import { Rig } from "./rigs/Rig";
 import { SpotLightRig } from "./rigs/SpotLightRig";
@@ -71,6 +74,12 @@ const MODEL_CLIP_RENDER_ORDER = 15;
 const TRANSLATION_SNAP = 1;
 const ROTATION_SNAP = Math.PI / 36;
 
+/** A top-level object of the rendered model, as listed in the scene tree. */
+export interface ModelPartDescriptor {
+  id: string;
+  name: string;
+}
+
 export class Stage {
   private container: HTMLElement;
   private renderer: WebGLRenderer;
@@ -85,6 +94,13 @@ export class Stage {
   private xrayPass: XRayPass;
 
   private modelGroup: Group;
+  // Rebuilt at every model load; also registered in `handles`.
+  private modelParts: ModelPartRig[] = [];
+  // Inspection poses survive reloads of the same data (view option changes),
+  // not a new render.
+  private loadedModelData: string | null = null;
+  private onModelPartsChange: ((parts: ModelPartDescriptor[]) => void) | null =
+    null;
   private axesWidget: AxesWidget;
   private viewOptions?: ViewOptionsContext;
 
@@ -290,7 +306,14 @@ export class Stage {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
+    const poses =
+      base64Data === this.loadedModelData
+        ? new Map(this.modelParts.map((rig) => [rig.id, rig.getPose()]))
+        : new Map<string, ModelPartPose>();
+    this.loadedModelData = base64Data;
+    this.clearModelParts();
     this.modelGroup.clear();
+    let parts: Object3D[] = [];
 
     if (format === ModelFormat.ThreeMF) {
       const loader = new ThreeMFLoader();
@@ -316,6 +339,9 @@ export class Stage {
           }
         });
         this.modelGroup.add(group);
+        // One child per 3MF build item: one per top-level object with
+        // the Explode toggle (lazy union), otherwise a single merged object.
+        parts = [...group.children];
       } catch (e) {
         console.error("Failed to parse 3MF:", e);
       }
@@ -332,10 +358,13 @@ export class Stage {
         this.modelGroup.add(mesh);
         if (this.viewOptions)
           this.materialManager.applyToGroup(this.modelGroup, this.viewOptions);
+        parts = [mesh];
       } catch (e) {
         console.error("Failed to parse STL:", e);
       }
     }
+
+    this.registerModelParts(parts, poses);
 
     // Pick an absorption coefficient so a ray traversing the model's full
     // diagonal in material reads as ~95% opaque (1 - exp(-3) ≈ 0.95).
@@ -352,6 +381,56 @@ export class Stage {
       if (h instanceof CrossSectionRig) h.rebuildForModel(this.modelGroup);
     });
     this.rebuildModelClipping();
+  }
+
+  /**
+   * Wrap each top-level model object in a selectable rig. Ids come from the
+   * 3MF object name, so selection and visibility carry over to the next
+   * render as long as the name stays.
+   */
+  private registerModelParts(
+    parts: Object3D[],
+    poses: Map<string, ModelPartPose>,
+  ): void {
+    const nameCounts = new Map<string, number>();
+    this.modelParts = parts.map((part, index) => {
+      const name =
+        part.name || `${sceneObjectMeta["model-part"].label} ${index + 1}`;
+      const count = (nameCounts.get(name) ?? 0) + 1;
+      nameCounts.set(name, count);
+      const id = `model-part:${name}${count > 1 ? `#${count}` : ""}`;
+
+      const rig = new ModelPartRig(id, name, part, this.theme.accent);
+      const pose = poses.get(id);
+      if (pose) rig.setPose(pose);
+      this.scene.add(rig.outline);
+      this.handles.set(id, rig);
+      return rig;
+    });
+
+    // Re-apply the selection on the rebuilt rig, or drop it if it vanished.
+    if (this.selectedId) {
+      this.selectObject(
+        this.handles.has(this.selectedId) ? this.selectedId : null,
+      );
+    }
+
+    this.onModelPartsChange?.(this.describeModelParts());
+  }
+
+  private describeModelParts(): ModelPartDescriptor[] {
+    return this.modelParts.map((rig) => ({ id: rig.id, name: rig.name }));
+  }
+
+  private clearModelParts(): void {
+    for (const rig of this.modelParts) {
+      if (this.transformControls.object === rig.getTransformTarget()) {
+        this.transformControls.detach();
+      }
+      this.handles.delete(rig.id);
+      rig.dispose();
+    }
+    this.modelParts = [];
   }
 
   // ============= Scene Object Registry =============
@@ -399,15 +478,39 @@ export class Stage {
       this.scene.add(h.light);
       handle = h;
     } else if (type === "directional-light") {
-      const h = new DirectionalLightRig(id, 0.5 * Math.PI, 100, 50, 200, this.theme.foreground);
+      const h = new DirectionalLightRig(
+        id,
+        0.5 * Math.PI,
+        100,
+        50,
+        200,
+        this.theme.foreground,
+      );
       this.scene.add(h.light);
       handle = h;
     } else if (type === "spot-light") {
-      const h = new SpotLightRig(id, 0.5 * Math.PI, 200, 200, 200, 0.15, 1, this.theme.foreground);
+      const h = new SpotLightRig(
+        id,
+        0.5 * Math.PI,
+        200,
+        200,
+        200,
+        0.15,
+        1,
+        this.theme.foreground,
+      );
       this.scene.add(h.light);
       handle = h;
     } else if (type === "point-light") {
-      const h = new PointLightRig(id, 0.25 * Math.PI, -200, -200, -200, 0, this.theme.foreground);
+      const h = new PointLightRig(
+        id,
+        0.25 * Math.PI,
+        -200,
+        -200,
+        -200,
+        0,
+        this.theme.foreground,
+      );
       this.scene.add(h.light);
       handle = h;
     }
@@ -516,6 +619,7 @@ export class Stage {
     });
 
     this.xrayPass.setClippingPlanes(planes);
+    this.modelParts.forEach((rig) => rig.setClippingPlanes([...planes]));
 
     // Assign isolated render-order tiers so each rig's stencil→cap cycle
     // completes before the next rig's stencil writes begin.
@@ -565,6 +669,14 @@ export class Stage {
   ): void {
     this.onSelectionChange = onSelectionChange;
     this.onPropertiesChange = onPropertiesChange;
+  }
+
+  /** Fires after every model load; called at once with the current parts. */
+  public setModelPartsCallback(
+    cb: (parts: ModelPartDescriptor[]) => void,
+  ): void {
+    this.onModelPartsChange = cb;
+    cb(this.describeModelParts());
   }
 
   public setObjectRegisteredCallback(
@@ -676,9 +788,9 @@ export class Stage {
     this.environmentRig.updateCamera(
       cam.position.distanceTo(this.activeCameraRig.getControls().target),
     );
-    this.handles.forEach((h) => {
-      if (h instanceof CrossSectionRig) h.update();
-    });
+    // Rigs mirror model matrices (outlines, stencils): make them current first.
+    this.scene.updateMatrixWorld();
+    this.handles.forEach((h) => h.update());
     // Camera position/rotation change every frame while orbiting — keep the
     // properties panel in sync if a camera is currently selected.
     if (this.selectedId) {
@@ -740,10 +852,11 @@ export class Stage {
       selectables.map((s) => s.obj),
       false,
     );
-    const hitId =
-      hits.length > 0
-        ? (selectables.find((s) => s.obj === hits[0].object)?.id ?? null)
-        : null;
+    // Nearest hit wins, whatever its kind; a cut-away region is not a hit.
+    const hit = hits.find((h) => !isClippedAway(h));
+    const hitId = hit
+      ? (selectables.find((s) => s.obj === hit.object)?.id ?? null)
+      : null;
 
     this.selectObject(hitId);
   };
@@ -762,5 +875,4 @@ export class Stage {
       this.snapEnabled ? ROTATION_SNAP : null,
     );
   };
-
 }

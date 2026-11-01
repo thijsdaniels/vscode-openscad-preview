@@ -33,7 +33,7 @@ const icons = {
   `,
 
   // Scene objects
-  "camera": svg`
+  camera: svg`
     <rect x="1.5" y="5" width="13" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
     <path d="M5.5 5 L6 3 L10 3 L10.5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
     <circle cx="8" cy="9" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -42,7 +42,7 @@ const icons = {
     <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
     <line x1="2" y1="10" x2="14" y2="5" stroke="currentColor" stroke-width="1.5"/>
   `,
-  "measurement": svg`
+  measurement: svg`
     <rect x="1" y="5" width="14" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
     <line x1="4" y1="5" x2="4" y2="8" stroke="currentColor" stroke-width="1"/>
     <line x1="7" y1="5" x2="7" y2="9" stroke="currentColor" stroke-width="1"/>
@@ -115,9 +115,14 @@ const icons = {
   `,
 
   // Effects
-  "shadows": svg`
+  shadows: svg`
     <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
     <path d="M 8 2 A 6 6 0 0 1 8 14 Z" fill="currentColor"/>
+  `,
+  "auto-render": svg`
+    <path d="M 13 8 A 5 5 0 1 1 11.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <polygon points="13.5,1.5 13.5,6 9,6" fill="currentColor"/>
+    <polygon points="6.5,5.5 6.5,10.5 10.5,8" fill="currentColor"/>
   `,
 
   // Environments
@@ -159,6 +164,16 @@ const icons = {
   "snap-face": svg`
     <rect x="2" y="2" width="12" height="12" rx="1.5" fill="currentColor" opacity="0.25"/>
     <circle cx="8" cy="8" r="2.5" fill="currentColor"/>
+  `,
+
+  // Model parts
+  "model-part": svg`
+    <path d="M8 1.5 L14 4.75 V11.25 L8 14.5 L2 11.25 V4.75 Z M2 4.75 L8 8 L14 4.75 M8 8 V14.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  `,
+  explode: svg`
+    <rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/>
+    <rect x="9.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/>
+    <rect x="5.25" y="9.5" width="5.5" height="5.5" rx="1" fill="currentColor"/>
   `,
 };
 

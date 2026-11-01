@@ -4,6 +4,10 @@ import {
   ScadParameter,
   StringParameter,
 } from "../../shared/types/ScadParameter";
+import { editorFromDeclaration, editorFromHint } from "./StringEditorRules";
+
+/** Group names (lower case) whose parameters are hidden from the Customizer. */
+const HIDDEN_GROUPS = new Set(["hidden", "masqué", "masque"]);
 
 /**
  * Parses SCAD files to extract relevant information from them.
@@ -19,15 +23,24 @@ export class ScadParser {
     const params: ScadParameter[] = [];
     let currentGroup = "";
     let moduleDepth = 0;
+    // Customizer convention: a `// text` line right above a declaration is
+    // its description. Any other line in between breaks the link.
+    let commentAbove: string | undefined;
 
     const lines = content.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
 
-      // Skip empty lines and comments that aren't group markers
+      // Remember plain comments as a possible description, skip empty lines
       if (!trimmed || (trimmed.startsWith("//") && !trimmed.includes("/*"))) {
+        commentAbove = trimmed
+          ? trimmed.substring(2).trim() || undefined
+          : undefined;
         continue;
       }
+
+      const description = commentAbove;
+      commentAbove = undefined;
 
       // Track module scope using brace counting
       if (trimmed.startsWith("module")) {
@@ -51,7 +64,7 @@ export class ScadParser {
       const decl = this.parseVariableDeclaration(trimmed);
       if (!decl) continue;
 
-      if (currentGroup.toLowerCase() === "hidden") continue;
+      if (HIDDEN_GROUPS.has(currentGroup.trim().toLowerCase())) continue;
 
       const parsedVal = this.parseVariableValue(decl.valueStr);
 
@@ -70,6 +83,20 @@ export class ScadParser {
 
       if (decl.commentStr) {
         this.parseTrailingComment(decl.commentStr, param);
+      }
+
+      // The comment above wins over a trailing description.
+      if (description) param.description = description;
+
+      // No hint and no choice list: guess the editor from value or name.
+      if (param.type === "string") {
+        const strParam = param as Partial<StringParameter>;
+        if (!strParam.editor && !strParam.options) {
+          Object.assign(
+            strParam,
+            editorFromDeclaration(decl.name, String(parsedVal.value)),
+          );
+        }
       }
 
       params.push(param as ScadParameter);
@@ -210,6 +237,11 @@ export class ScadParser {
         }
       } else if (param.type === "string") {
         const strParam = param as Partial<StringParameter>;
+        const hinted = editorFromHint(configStr);
+        if (hinted) {
+          Object.assign(strParam, hinted);
+          return;
+        }
         const options = this.parseChoices(
           configStr,
           "string",

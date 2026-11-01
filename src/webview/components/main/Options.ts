@@ -5,6 +5,7 @@ import {
 } from "@vscode-elements/elements/dist/vscode-context-menu/vscode-context-menu.js";
 import { css, html, LitElement } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
+import { ModelContext, modelContext } from "../../contexts/ModelContext";
 import { SceneContext, sceneContext } from "../../contexts/SceneContext";
 import { PanelContext, panelContext } from "../../contexts/PanelContext";
 import {
@@ -15,6 +16,7 @@ import {
   ViewOptionsContext,
   viewOptionsContext,
 } from "../../contexts/ViewOptionsContext";
+import { t } from "../../i18n/t";
 import "../atoms/Icon";
 import "../atoms/IconButton";
 
@@ -58,6 +60,10 @@ export class Options extends LitElement {
   @state()
   private panelContext!: PanelContext;
 
+  @consume({ context: modelContext, subscribe: true })
+  @state()
+  private modelContext!: ModelContext;
+
   @consume({ context: sceneContext, subscribe: true })
   @state()
   private sceneContext!: SceneContext;
@@ -75,9 +81,25 @@ export class Options extends LitElement {
     const { get } = this.viewSettings;
 
     return html`
+      <div class="group">
+        <scad-icon-button
+          label=${t("options.autoRender")}
+          tooltip=${t("options.autoRender.tip")}
+          .latched=${this.modelContext?.autoRender ?? false}
+          @click=${(e: MouseEvent) => {
+            // Ctrl+click latches automatic preview; plain click renders once.
+            if (e.ctrlKey || e.metaKey) this.modelContext.toggleAutoRender();
+            else this.modelContext.renderNow();
+          }}
+        >
+          <scad-icon name="auto-render"></scad-icon>
+        </scad-icon-button>
+      </div>
+
       <div class="group" style="position:relative;">
         <scad-icon-button
-          label="Switch camera"
+          label=${t("options.camera")}
+          tooltip=${t("options.camera.tip")}
           @change=${() => {
             this.cameraPicker.show = true;
           }}
@@ -104,7 +126,8 @@ export class Options extends LitElement {
 
       <div class="group">
         <scad-icon-button
-          label="Perspective"
+          label=${t("options.perspective")}
+          tooltip=${t("options.perspective.tip")}
           toggleable
           .checked=${get("camera") === CameraMode.Perspective}
           @change=${() => this.set("camera", CameraMode.Perspective)}
@@ -112,7 +135,8 @@ export class Options extends LitElement {
           <scad-icon name="camera-perspective"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="Orthographic"
+          label=${t("options.orthographic")}
+          tooltip=${t("options.orthographic.tip")}
           toggleable
           .checked=${get("camera") === CameraMode.Orthographic}
           @change=${() => this.set("camera", CameraMode.Orthographic)}
@@ -123,7 +147,8 @@ export class Options extends LitElement {
 
       <div class="group">
         <scad-icon-button
-          label="Solid"
+          label=${t("options.solid")}
+          tooltip=${t("options.solid.tip")}
           toggleable
           .checked=${get("renderMode") === RenderMode.Solid}
           @change=${() => this.set("renderMode", RenderMode.Solid)}
@@ -131,7 +156,8 @@ export class Options extends LitElement {
           <scad-icon name="render-solid"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="X-Ray"
+          label=${t("options.xray")}
+          tooltip=${t("options.xray.tip")}
           toggleable
           .checked=${get("renderMode") === RenderMode.XRay}
           @change=${() => this.set("renderMode", RenderMode.XRay)}
@@ -139,7 +165,8 @@ export class Options extends LitElement {
           <scad-icon name="render-xray"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="Wireframe"
+          label=${t("options.wireframe")}
+          tooltip=${t("options.wireframe.tip")}
           toggleable
           .checked=${get("renderMode") === RenderMode.Wireframe}
           @change=${() => this.set("renderMode", RenderMode.Wireframe)}
@@ -150,7 +177,8 @@ export class Options extends LitElement {
 
       <div class="group">
         <scad-icon-button
-          label="Toggle Shadows"
+          label=${t("options.shadows")}
+          tooltip=${t("options.shadows.tip")}
           toggleable
           .checked=${get("shadows")}
           @change=${() => this.set("shadows", !get("shadows"))}
@@ -161,7 +189,8 @@ export class Options extends LitElement {
 
       <div class="group">
         <scad-icon-button
-          label="No Environment"
+          label=${t("options.envNone")}
+          tooltip=${t("options.envNone.tip")}
           toggleable
           .checked=${get("environment") === Environment.None}
           @change=${() => this.set("environment", Environment.None)}
@@ -169,7 +198,8 @@ export class Options extends LitElement {
           <scad-icon name="env-none"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="Grid"
+          label=${t("options.envGrid")}
+          tooltip=${t("options.envGrid.tip")}
           toggleable
           .checked=${get("environment") === Environment.Grid}
           @change=${() => this.set("environment", Environment.Grid)}
@@ -177,7 +207,8 @@ export class Options extends LitElement {
           <scad-icon name="env-grid"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="Build Plate"
+          label=${t("options.envBuildPlate")}
+          tooltip=${t("options.envBuildPlate.tip")}
           toggleable
           .checked=${get("environment") === Environment.BuildPlate}
           @change=${() => this.set("environment", Environment.BuildPlate)}
@@ -188,7 +219,8 @@ export class Options extends LitElement {
 
       <div class="group">
         <scad-icon-button
-          label="Toggle Log"
+          label=${t("options.log")}
+          tooltip=${t("options.log.tip")}
           toggleable
           .checked=${this.panelContext.panels.bottomPanel}
           @change=${() => this.panelContext.toggle("bottomPanel")}
@@ -196,7 +228,8 @@ export class Options extends LitElement {
           <scad-icon name="panel-bottom"></scad-icon>
         </scad-icon-button>
         <scad-icon-button
-          label="Toggle Side Panel"
+          label=${t("options.sidePanel")}
+          tooltip=${t("options.sidePanel.tip")}
           toggleable
           .checked=${this.panelContext.panels.sidePanel}
           @change=${() => this.panelContext.toggle("sidePanel")}

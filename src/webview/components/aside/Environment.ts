@@ -5,6 +5,7 @@ import {
   ViewOptionsContext,
   viewOptionsContext,
 } from "../../contexts/ViewOptionsContext";
+import { t } from "../../i18n/t";
 import { NumberFieldChangeEvent } from "../atoms/NumberField";
 import "../atoms/Collapsible";
 import "../atoms/Field";
@@ -38,8 +39,11 @@ export class ScadEnvironment extends LitElement {
     const fogDensity = this.viewOptions.get("fogDensity");
 
     return html`
-      <scad-collapsible heading="Fog" open>
-        <scad-field label="Density">
+      <scad-collapsible heading=${t("environment.fog")} open>
+        <scad-field
+          label=${t("environment.density")}
+          tooltip=${t("environment.density.tip")}
+        >
           <scad-number-field
             .value=${fogDensity}
             .min=${0}

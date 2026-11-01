@@ -2,6 +2,7 @@ import {
   commands,
   Disposable,
   ExtensionContext,
+  l10n,
   Uri,
   ViewColumn,
   window,
@@ -30,7 +31,9 @@ export function registerShowPanelCommand(
     if (activePanels.has(key)) {
       // There's currently no public API on ScadPreviewPanel to reveal,
       // but we can add one later if needed. For now, we just skip creating a duplicate.
-      window.showInformationMessage("Preview is already open for this file.");
+      window.showInformationMessage(
+        l10n.t("Preview is already open for this file."),
+      );
       return;
     }
 
@@ -40,7 +43,7 @@ export function registerShowPanelCommand(
     // Create the Webview tab
     const webviewPanel = window.createWebviewPanel(
       "openscadPreview",
-      `OpenSCAD Preview: ${documentUri.path.split("/").pop()}`,
+      l10n.t("OpenSCAD Preview: {0}", documentUri.path.split("/").pop() ?? ""),
       ViewColumn.Beside,
       {
         enableScripts: true,
