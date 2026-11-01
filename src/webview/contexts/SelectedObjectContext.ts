@@ -68,6 +68,25 @@ export interface MeasurementProperties {
   distance: number;
 }
 
+export interface ModelPartProperties {
+  type: "model-part";
+  name: string;
+  /** Distinct `#rrggbb` colours of the part's materials. */
+  colors: string[];
+  /** Bounding box as rendered, before any inspection move (mm). */
+  sizeX: number;
+  sizeY: number;
+  sizeZ: number;
+  triangles: number;
+  /** Centre of the part — visual inspection only, reset on next render. */
+  positionX: number;
+  positionY: number;
+  positionZ: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+}
+
 export type ObjectProperties =
   | CrossSectionPlaneProperties
   | AmbientLightProperties
@@ -75,7 +94,8 @@ export type ObjectProperties =
   | SpotLightProperties
   | PointLightProperties
   | CameraProperties
-  | MeasurementProperties;
+  | MeasurementProperties
+  | ModelPartProperties;
 
 export interface SelectedObjectContext {
   type: SceneObjectType | null;

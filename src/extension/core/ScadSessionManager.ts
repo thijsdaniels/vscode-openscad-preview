@@ -1,4 +1,4 @@
-import { Uri } from "vscode";
+import { Memento, Uri } from "vscode";
 import { ScadSession } from "./ScadSession";
 
 /**
@@ -9,7 +9,7 @@ import { ScadSession } from "./ScadSession";
 export class ScadSessionManager {
   private sessions = new Map<string, ScadSession>();
 
-  constructor() {}
+  constructor(private readonly workspaceState: Memento) {}
 
   /**
    * Gets an existing session for a URI or creates a new one if it doesn't
@@ -20,7 +20,7 @@ export class ScadSessionManager {
     let session = this.sessions.get(key);
 
     if (!session) {
-      session = new ScadSession(documentUri);
+      session = new ScadSession(documentUri, this.workspaceState);
       this.sessions.set(key, session);
     }
 

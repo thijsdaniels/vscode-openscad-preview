@@ -8,7 +8,8 @@ export type SceneObjectType =
   | "spot-light"
   | "point-light"
   | "camera"
-  | "measurement";
+  | "measurement"
+  | "model-part";
 
 export interface SceneObjectDescriptor {
   id: string;

@@ -60,6 +60,9 @@ export class CrossSectionRig extends Rig {
   private capMesh: Mesh;
   private capGeometry = new PlaneGeometry(CAP_SIZE, CAP_SIZE);
   private stencilGroup = new Group();
+  // Model mesh each stencil mesh mirrors: parts can be hidden or moved for
+  // inspection, and the stencil must follow or the cap would be wrong.
+  private stencilSources = new Map<Mesh, Mesh>();
 
   private tierIndex = 0;
   private _visible = true;
@@ -234,6 +237,10 @@ export class CrossSectionRig extends Rig {
   /** Called every animation frame to sync the THREE.Plane from the pivot. */
   public update(): void {
     if (!this.pivot.visible) return;
+    for (const [stencil, source] of this.stencilSources) {
+      stencil.matrix.copy(source.matrixWorld);
+      stencil.visible = isShown(source);
+    }
     this.pivot.updateMatrixWorld(true);
     const normal = new Vector3(0, 0, -1)
       .applyQuaternion(this.pivot.quaternion)
@@ -365,6 +372,7 @@ export class CrossSectionRig extends Rig {
         stencilMesh.matrixAutoUpdate = false;
         stencilMesh.matrix.copy(child.matrixWorld);
         this.stencilGroup.add(stencilMesh);
+        this.stencilSources.set(stencilMesh, child);
       }
     });
   }
@@ -376,5 +384,14 @@ export class CrossSectionRig extends Rig {
       (child.material as Material).dispose();
     });
     this.stencilGroup.clear();
+    this.stencilSources.clear();
   }
+}
+
+/** True when the object and all its ancestors are visible. */
+function isShown(object: Object3D): boolean {
+  for (let o: Object3D | null = object; o; o = o.parent) {
+    if (!o.visible) return false;
+  }
+  return true;
 }

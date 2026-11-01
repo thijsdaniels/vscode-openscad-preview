@@ -1,0 +1,16 @@
+{
+  "extension.displayName": "Aperçu OpenSCAD",
+  "extension.description": "Aperçu 3D interactif des fichiers OpenSCAD (.scad).",
+  "config.previewFormat": "Format utilisé pour l'aperçu 3D. Le 3MF gère les couleurs mais exige OpenSCAD Nightly. Le STL est reconnu partout.",
+  "config.slicerExecutable": "Chemin facultatif du trancheur (ex. Bambu Studio ou PrusaSlicer). Vide : l'application par défaut du système pour les modèles 3D est utilisée.",
+  "config.executablePath": "Chemin de l'exécutable OpenSCAD. Vide : détection automatique ou PATH du système.",
+  "config.renderBackend": "Moteur de géométrie utilisé pour calculer le modèle.",
+  "config.renderBackend.auto": "Manifold si OpenSCAD le permet (2024 ou plus récent), sinon CGAL.",
+  "config.renderBackend.manifold": "Manifold : rapide (OpenSCAD récent requis).",
+  "config.renderBackend.cgal": "CGAL : lent, moteur historique.",
+  "config.parameterLabel":"Libellé des champs de l'onglet Paramètres.",
+  "config.parameterLabel.name": "Nom de la variable, mis en forme (par défaut).",
+  "config.parameterLabel.description": "Commentaire écrit au-dessus de la variable (accents permis) ; nom de la variable s'il n'y a pas de commentaire.",
+  "config.defaultColor": "Couleur du modèle dans l'aperçu là où le code ne fixe aucune color(). Vide : couleur du texte de l'éditeur.",
+  "command.showPanel": "Afficher l'aperçu OpenSCAD"
+}

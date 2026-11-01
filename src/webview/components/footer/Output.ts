@@ -2,6 +2,10 @@ import { consume } from "@lit/context";
 import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { logContext, LogContext } from "../../contexts/LogContext";
+import { t } from "../../i18n/t";
+import type { IconName } from "../atoms/Icon";
+import "../atoms/Icon";
+import "../atoms/IconButton";
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -136,7 +140,7 @@ export class ScadOutput extends LitElement {
     }
   }
 
-  private getIcon(level: string) {
+  private getIcon(level: string): IconName {
     switch (level) {
       case "error":
         return "error";
@@ -150,20 +154,24 @@ export class ScadOutput extends LitElement {
   render() {
     return html`
       <div class="header">
-        <span>Output</span>
+        <span>${t("output.heading")}</span>
         <div class="header-actions">
-          <vscode-toolbar-button
-            icon="eraser"
+          <scad-icon-button
             toggleable
             .checked=${this.logContext?.autoClear}
-            title="Auto-clear on new renders"
+            label=${t("output.autoClear")}
+            tooltip=${t("output.autoClear.tip")}
             @change=${() => this.logContext?.toggleAutoClear()}
-          ></vscode-toolbar-button>
-          <vscode-toolbar-button
-            icon="clear-all"
-            title="Clear Console"
+          >
+            <scad-icon name="eraser"></scad-icon>
+          </scad-icon-button>
+          <scad-icon-button
+            label=${t("output.clear")}
+            tooltip=${t("output.clear.tip")}
             @click=${() => this.logContext?.clear()}
-          ></vscode-toolbar-button>
+          >
+            <scad-icon name="clear-all"></scad-icon>
+          </scad-icon-button>
         </div>
       </div>
       <div class="log-container">
@@ -171,16 +179,15 @@ export class ScadOutput extends LitElement {
           (log) => html`
             <div class="log-message log-${log.level}" id="${log.id}">
               <div class="log-header">
-                <vscode-icon
-                  style="color: currentColor"
-                  name="${this.getIcon(log.level)}"
-                ></vscode-icon>
+                <scad-icon name="${this.getIcon(log.level)}"></scad-icon>
                 <div class="log-text">${log.text}</div>
               </div>
               ${log.traces.length > 0
                 ? html`
                     <details class="log-trace-details">
-                      <summary>&nbsp;Show trace...</summary>
+                      <summary title=${t("output.showTrace.tip")}>
+                        &nbsp;${t("output.showTrace")}
+                      </summary>
                       <div class="log-trace">
                         ${log.traces.map(
                           (trace) =>

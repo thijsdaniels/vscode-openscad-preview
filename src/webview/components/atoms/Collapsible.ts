@@ -1,5 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { t } from "../../i18n/t";
+import "./Icon";
 
 @customElement("scad-collapsible")
 export class ScadCollapsible extends LitElement {
@@ -54,11 +56,15 @@ export class ScadCollapsible extends LitElement {
 
   render() {
     return html`
-      <div class="header" @click="${this.toggle}">
+      <div
+        class="header"
+        title=${t("collapsible.tip", this.heading)}
+        @click="${this.toggle}"
+      >
         <span class="heading">${this.heading}</span>
-        <vscode-icon
-          .name="${this.open ? "chevron-up" : "chevron-down"}"
-        ></vscode-icon>
+        <scad-icon
+          name="${this.open ? "chevron-up" : "chevron-down"}"
+        ></scad-icon>
       </div>
       <div class="content">
         <slot></slot>
@@ -68,5 +74,18 @@ export class ScadCollapsible extends LitElement {
 
   toggle() {
     this.open = !this.open;
+    this.dispatchEvent(new CollapsibleToggleEvent(this.open));
+  }
+}
+
+/** Fired when the user opens or closes the section by its header. */
+export class CollapsibleToggleEvent extends CustomEvent<{ open: boolean }> {
+  static readonly eventName = "toggle" as const;
+  constructor(open: boolean) {
+    super(CollapsibleToggleEvent.eventName, {
+      detail: { open },
+      bubbles: true,
+      composed: true,
+    });
   }
 }

@@ -1,8 +1,10 @@
 import {
   Color,
   Group,
-  MathUtils,
+  Matrix4,
   Mesh,
+  Object3D,
+  OrthographicCamera,
   PerspectiveCamera,
   Raycaster,
   Scene,
@@ -18,8 +20,11 @@ import {
   CSS2DRenderer,
 } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { SceneObjectType } from "../../contexts/SceneContext";
+import { isClippedAway } from "../isClippedAway";
 import { MeasurementRig } from "../rigs/MeasurementRig";
 import { Rig } from "../rigs/Rig";
+import { MeasureArrow } from "../widgets/MeasureArrow";
+import { meshFeatures } from "./MeshFeatures";
 import { Tool, ViewportBindings } from "./Tool";
 
 export enum SnappingMode {
@@ -28,12 +33,9 @@ export enum SnappingMode {
   Face = "face",
 }
 
-/** Screen-space snap radius in pixels. */
-const SNAP_PIXELS = 20;
-
 export interface MeasureToolContext {
   raycaster: Raycaster;
-  camera: () => PerspectiveCamera | import("three").OrthographicCamera;
+  camera: () => PerspectiveCamera | OrthographicCamera;
   renderer: WebGLRenderer;
   css2dRenderer: CSS2DRenderer;
   modelGroup: Group;
@@ -56,7 +58,8 @@ export class MeasureTool implements Tool {
   // Preview elements
   private previewGroup: Group;
   private hoverMarker: CSS2DObject;
-  private pendingAMarker: CSS2DObject;
+  private arrowA: MeasureArrow;
+  private arrowB: MeasureArrow;
   private previewLine: Line2;
 
   constructor(ctx: MeasureToolContext) {
@@ -69,9 +72,11 @@ export class MeasureTool implements Tool {
     this.hoverMarker.visible = false;
     this.previewGroup.add(this.hoverMarker);
 
-    this.pendingAMarker = this.createMarker(colorHex);
-    this.pendingAMarker.visible = false;
-    this.previewGroup.add(this.pendingAMarker);
+    this.arrowA = new MeasureArrow(colorHex);
+    this.arrowB = new MeasureArrow(colorHex);
+    this.arrowA.visible = false;
+    this.arrowB.visible = false;
+    this.previewGroup.add(this.arrowA, this.arrowB);
 
     const geo = new LineGeometry();
     geo.setPositions([0, 0, 0, 0, 0, 0]);
@@ -105,7 +110,8 @@ export class MeasureTool implements Tool {
     // Reset state
     this.pendingA = null;
     this.hoverMarker.visible = false;
-    this.pendingAMarker.visible = false;
+    this.arrowA.visible = false;
+    this.arrowB.visible = false;
     this.previewLine.visible = false;
 
     // Remove preview from scene
@@ -113,7 +119,8 @@ export class MeasureTool implements Tool {
 
     // Clean up DOM elements
     this.hoverMarker.element.remove();
-    this.pendingAMarker.element.remove();
+    this.arrowA.element.remove();
+    this.arrowB.element.remove();
     this.previewLine.geometry.dispose();
     (this.previewLine.material as LineMaterial).dispose();
   }
@@ -131,16 +138,13 @@ export class MeasureTool implements Tool {
 
     if (!this.pendingA) {
       this.pendingA = point.clone();
-      this.pendingAMarker.position.copy(point);
-      this.pendingAMarker.visible = true;
     } else {
       const id = `measurement-${Date.now()}`;
       const rig = new MeasurementRig(id, this.pendingA, point, this.ctx.color);
       this.ctx.addObject(rig, "measurement");
       this.pendingA = null;
-      this.pendingAMarker.visible = false;
-      this.previewLine.visible = false;
     }
+    this.updatePreview(point);
   };
 
   // ============= Raycasting + snapping =============
@@ -155,23 +159,13 @@ export class MeasureTool implements Tool {
     );
     this.ctx.raycaster.setFromCamera(mouse, this.ctx.camera());
 
-    const intersects = this.ctx.raycaster.intersectObject(
-      this.ctx.modelGroup,
-      true,
-    );
-    if (intersects.length === 0) return null;
+    // Nearest hit on a shown mesh, outside the regions cut away by a section.
+    const intersection = this.ctx.raycaster
+      .intersectObject(this.ctx.modelGroup, true)
+      .find((hit) => isShown(hit.object) && !isClippedAway(hit));
+    if (!intersection || !(intersection.object instanceof Mesh)) return null;
 
-    const intersection = intersects[0];
-    let snapped = intersection.point;
-    const threshold = this.snapThresholdAt(intersection.point);
-    const variant = this.ctx.variant();
-
-    if (variant === SnappingMode.Vertex && intersection.object instanceof Mesh) {
-      snapped = this.snapToVertex(intersection.object, intersection.point, threshold);
-    } else if (variant === SnappingMode.Edge && intersection.object instanceof Mesh) {
-      snapped = this.snapToEdge(intersection.object, intersection.point, threshold);
-    }
-
+    const snapped = this.snap(intersection.object, intersection.point);
     return new Vector3(
       Math.round(snapped.x * 100) / 100,
       Math.round(snapped.y * 100) / 100,
@@ -179,103 +173,37 @@ export class MeasureTool implements Tool {
     );
   }
 
-  private snapThresholdAt(point: Vector3): number {
-    const camera = this.ctx.camera();
-    const height = this.ctx.renderer.domElement.clientHeight;
-
-    if (camera instanceof PerspectiveCamera) {
-      const distance = camera.position.distanceTo(point);
-      const worldPerPixel =
-        (2 * distance * Math.tan(MathUtils.degToRad(camera.fov / 2))) / height;
-      return worldPerPixel * SNAP_PIXELS;
+  /**
+   * Stick the hit point to the nearest real corner or edge of the mesh, per
+   * the snapping mode. The search runs in the mesh's local space.
+   */
+  private snap(mesh: Mesh, point: Vector3): Vector3 {
+    const variant = this.ctx.variant();
+    if (variant !== SnappingMode.Vertex && variant !== SnappingMode.Edge) {
+      return point;
     }
 
-    const worldPerPixel = (camera.top - camera.bottom) / (camera.zoom * height);
-    return worldPerPixel * SNAP_PIXELS;
-  }
-
-  private snapToVertex(mesh: Mesh, point: Vector3, threshold: number): Vector3 {
-    const positions = mesh.geometry.attributes.position;
-    if (!positions) return point;
-
-    let closest = point.clone();
-    let closestDist = Infinity;
-    const world = mesh.matrixWorld;
-
-    for (let i = 0; i < positions.count; i++) {
-      const v = new Vector3(
-        positions.getX(i),
-        positions.getY(i),
-        positions.getZ(i),
-      ).applyMatrix4(world);
-      const d = v.distanceTo(point);
-      if (d < closestDist && d < threshold) {
-        closestDist = d;
-        closest = v;
-      }
-    }
-    return closest;
-  }
-
-  private snapToEdge(mesh: Mesh, point: Vector3, threshold: number): Vector3 {
-    const positions = mesh.geometry.attributes.position;
-    const indices = mesh.geometry.index;
-    if (!positions) return point;
-
-    const edges: [number, number][] = [];
-    if (indices) {
-      const arr = indices.array as Uint32Array | Uint16Array;
-      for (let i = 0; i < arr.length; i += 3) {
-        edges.push(
-          [arr[i], arr[i + 1]],
-          [arr[i + 1], arr[i + 2]],
-          [arr[i + 2], arr[i]],
-        );
-      }
-    } else {
-      for (let i = 0; i < positions.count; i += 3) {
-        edges.push([i, i + 1], [i + 1, i + 2], [i + 2, i]);
-      }
-    }
-
-    const world = mesh.matrixWorld;
-    let closest = point.clone();
-    let closestDist = Infinity;
-
-    for (const [i1, i2] of edges) {
-      const v1 = new Vector3(
-        positions.getX(i1),
-        positions.getY(i1),
-        positions.getZ(i1),
-      ).applyMatrix4(world);
-      const v2 = new Vector3(
-        positions.getX(i2),
-        positions.getY(i2),
-        positions.getZ(i2),
-      ).applyMatrix4(world);
-      const ep = this.closestPointOnSegment(v1, v2, point);
-      const d = ep.distanceTo(point);
-      if (d < closestDist && d < threshold) {
-        closestDist = d;
-        closest = ep;
-      }
-    }
-    return closest;
-  }
-
-  private closestPointOnSegment(a: Vector3, b: Vector3, p: Vector3): Vector3 {
-    const pa = p.clone().sub(a);
-    const ba = b.clone().sub(a);
-    const t = Math.max(0, Math.min(1, pa.dot(ba) / ba.dot(ba)));
-    return a.clone().add(ba.multiplyScalar(t));
+    const features = meshFeatures(mesh.geometry);
+    const local = point
+      .clone()
+      .applyMatrix4(new Matrix4().copy(mesh.matrixWorld).invert());
+    const closest =
+      variant === SnappingMode.Vertex
+        ? closestVertex(features.vertices, local)
+        : closestOnEdges(features.edges, local);
+    return closest ? closest.applyMatrix4(mesh.matrixWorld) : point;
   }
 
   // ============= Preview =============
 
   private updatePreview(hoverPoint: Vector3 | null): void {
+    const showLine = !!(hoverPoint && this.pendingA);
+    this.previewLine.visible = showLine;
+    this.arrowA.visible = showLine;
+    this.arrowB.visible = showLine;
+
     if (!hoverPoint) {
       this.hoverMarker.visible = false;
-      this.previewLine.visible = false;
       return;
     }
 
@@ -292,20 +220,74 @@ export class MeasureTool implements Tool {
         hoverPoint.z,
       ]);
       this.previewLine.computeLineDistances();
-      this.previewLine.visible = true;
+      this.arrowA.set(this.pendingA, hoverPoint);
+      this.arrowB.set(hoverPoint, this.pendingA);
     }
   }
 
+  /** Hollow ring showing where the next point will land. */
   private createMarker(color: string): CSS2DObject {
     const el = document.createElement("div");
     el.style.cssText = `
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
+      box-sizing: border-box;
       border-radius: 50%;
-      background: ${color};
-      transform: translate(-50%, -50%);
+      border: 2px solid ${color};
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
       pointer-events: none;
     `;
     return new CSS2DObject(el);
   }
+}
+
+/** False when the object or one of its ancestors is hidden. */
+function isShown(object: Object3D): boolean {
+  for (let o: Object3D | null = object; o; o = o.parent) {
+    if (!o.visible) return false;
+  }
+  return true;
+}
+
+function closestVertex(vertices: Vector3[], point: Vector3): Vector3 | null {
+  let closest: Vector3 | null = null;
+  let closestDist = Infinity;
+  for (const v of vertices) {
+    const d = v.distanceToSquared(point);
+    if (d < closestDist) {
+      closestDist = d;
+      closest = v;
+    }
+  }
+  return closest?.clone() ?? null;
+}
+
+function closestOnEdges(endpoints: Vector3[], point: Vector3): Vector3 | null {
+  let closest: Vector3 | null = null;
+  let closestDist = Infinity;
+  const candidate = new Vector3();
+  for (let i = 0; i < endpoints.length; i += 2) {
+    closestPointOnSegment(endpoints[i], endpoints[i + 1], point, candidate);
+    const d = candidate.distanceToSquared(point);
+    if (d < closestDist) {
+      closestDist = d;
+      closest = candidate.clone();
+    }
+  }
+  return closest;
+}
+
+function closestPointOnSegment(
+  a: Vector3,
+  b: Vector3,
+  p: Vector3,
+  target: Vector3,
+): Vector3 {
+  target.subVectors(b, a);
+  const lengthSq = target.lengthSq();
+  const t =
+    lengthSq > 0
+      ? Math.max(0, Math.min(1, p.clone().sub(a).dot(target) / lengthSq))
+      : 0;
+  return target.multiplyScalar(t).add(a);
 }

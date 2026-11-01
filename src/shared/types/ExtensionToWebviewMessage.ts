@@ -1,4 +1,5 @@
 import { ModelFormat } from "./ModelFormat";
+import { ParameterLabelMode } from "./ParameterLabelMode";
 import { ScadParameter } from "./ScadParameter";
 
 export type ExtensionToWebviewMessage =
@@ -18,4 +19,8 @@ export type ExtensionToWebviewMessage =
     }
   | { type: "error"; message: string }
   | { type: "log"; message: string }
-  | { type: "loadScene"; snapshot: unknown | null };
+  | { type: "loadScene"; snapshot: unknown | null }
+  | { type: "autoRender"; enabled: boolean; pending: boolean }
+  | { type: "explode"; enabled: boolean }
+  | { type: "parameterLabel"; mode: ParameterLabelMode }
+  | { type: "defaultColor"; color: string };

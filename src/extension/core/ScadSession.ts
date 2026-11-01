@@ -1,4 +1,4 @@
-import { EventEmitter, Uri, workspace } from "vscode";
+import { EventEmitter, Memento, Uri, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 import { ScadParameter } from "../../shared/types/ScadParameter";
 import { ScadClient } from "../services/ScadClient";
@@ -41,7 +41,36 @@ export class ScadSession {
   private _onLog = new EventEmitter<string>();
   public readonly onLog = this._onLog.event;
 
-  constructor(public readonly documentUri: Uri) {
+  private _onAutoRenderChanged = new EventEmitter<{
+    enabled: boolean;
+    pending: boolean;
+  }>();
+  public readonly onAutoRenderChanged = this._onAutoRenderChanged.event;
+
+  // When latched on (default), every change is rendered at once; when off,
+  // file and parameter changes are queued until the user asks for a render.
+  private _autoRender = true;
+  private renderPending = false;
+  // The first render (at launch) always happens, whatever the mode.
+  private hasRendered = false;
+
+  private _onExplodeChanged = new EventEmitter<boolean>();
+  public readonly onExplodeChanged = this._onExplodeChanged.event;
+
+  // Exploded (lazy union): one part per top-level object. Remembered per file.
+  private _explode: boolean;
+
+  private get explodeStateKey(): string {
+    return `openscad.explode.${this.documentUri.toString()}`;
+  }
+
+  constructor(
+    public readonly documentUri: Uri,
+    private readonly workspaceState: Memento,
+  ) {
+    // Read before the watcher starts: its first change triggers a render.
+    this._explode = workspaceState.get<boolean>(this.explodeStateKey, false);
+
     this.scadRenderer = new ScadRenderer({
       onStart: () => this._onRenderStarted.fire(),
       onComplete: (data) => this._onRenderCompleted.fire(data),
@@ -61,10 +90,7 @@ export class ScadSession {
         const parser = new ScadParser(content);
         this.scadParameters.updateDefinitions(parser.parameters);
 
-        this.scadRenderer.render(
-          this.documentUri.fsPath,
-          this.scadParameters.getActiveValues(),
-        );
+        this.requestRender();
       },
     });
 
@@ -88,7 +114,9 @@ export class ScadSession {
           if (data.parameterSets) {
             this.scadParameters.updateParameterSets(data.parameterSets);
 
-            const oldValues = JSON.stringify(this.scadParameters.getActiveValues());
+            const oldValues = JSON.stringify(
+              this.scadParameters.getActiveValues(),
+            );
             const activeSetName = this.scadParameters.getActiveSetName();
             if (activeSetName) {
               if (!(activeSetName in data.parameterSets)) {
@@ -96,12 +124,12 @@ export class ScadSession {
               } else {
                 // Hot-reload the active set to ingest external JSON changes into the flat overrides bucket
                 this.scadParameters.setActiveSet(activeSetName);
-                
-                if (JSON.stringify(this.scadParameters.getActiveValues()) !== oldValues) {
-                  this.scadRenderer.render(
-                    this.documentUri.fsPath,
-                    this.scadParameters.getActiveValues(),
-                  );
+
+                if (
+                  JSON.stringify(this.scadParameters.getActiveValues()) !==
+                  oldValues
+                ) {
+                  this.requestRender();
                 }
               }
             }
@@ -127,6 +155,61 @@ export class ScadSession {
     }
   }
 
+  public get autoRender(): { enabled: boolean; pending: boolean } {
+    return { enabled: this._autoRender, pending: this.renderPending };
+  }
+
+  /** Turns automatic rendering on or off; turning it on flushes pending changes. */
+  public setAutoRender(enabled: boolean) {
+    this._autoRender = enabled;
+    if (enabled && this.renderPending) {
+      this.renderPending = false;
+      this.requestRender();
+    }
+    this._onAutoRenderChanged.fire(this.autoRender);
+  }
+
+  /** Renders the current state once, whatever the automatic mode. */
+  public renderNow() {
+    this.renderPending = false;
+    this.hasRendered = true;
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+      this._explode,
+    );
+    this._onAutoRenderChanged.fire(this.autoRender);
+  }
+
+  public get explode(): boolean {
+    return this._explode;
+  }
+
+  /** Splits the model into its top-level parts (or merges it) and re-renders. */
+  public setExplode(enabled: boolean) {
+    this._explode = enabled;
+    this.workspaceState.update(this.explodeStateKey, enabled);
+    this._onExplodeChanged.fire(enabled);
+    this.renderNow();
+  }
+
+  private requestRender() {
+    if (!this._autoRender && this.hasRendered) {
+      if (!this.renderPending) {
+        this.renderPending = true;
+        this._onAutoRenderChanged.fire(this.autoRender);
+      }
+      return;
+    }
+
+    this.hasRendered = true;
+    this.scadRenderer.render(
+      this.documentUri.fsPath,
+      this.scadParameters.getActiveValues(),
+      this._explode,
+    );
+  }
+
   public get currentParameters(): ScadParameter[] {
     return this.scadParameters.getParameters();
   }
@@ -149,15 +232,12 @@ export class ScadSession {
   ) {
     this.scadParameters.updateValue(name, value);
 
-    this.scadRenderer.render(
-      this.documentUri.fsPath,
-      this.scadParameters.getActiveValues(),
-    );
+    this.requestRender();
   }
 
   public async saveParameterSet(name: string) {
     const partial = this.scadParameters.calculateActiveSetPartial();
-    
+
     let data: {
       parameterSets?: Record<string, Record<string, string>>;
       fileFormatVersion?: string;
@@ -174,7 +254,10 @@ export class ScadSession {
     data.parameterSets[name] = partial;
     data.fileFormatVersion = "1";
 
-    await workspace.fs.writeFile(this.jsonFileUri, Buffer.from(JSON.stringify(data, null, 2), "utf-8"));
+    await workspace.fs.writeFile(
+      this.jsonFileUri,
+      Buffer.from(JSON.stringify(data, null, 2), "utf-8"),
+    );
     this.scadParameters.updateParameterSets(data.parameterSets);
     this.scadParameters.setActiveSet(name);
   }
@@ -183,13 +266,16 @@ export class ScadSession {
     if (this.scadParameters.getActiveSetName() === name) {
       this.applyParameterSet(undefined);
     }
-    
+
     try {
       const content = await workspace.fs.readFile(this.jsonFileUri);
       const data = JSON.parse(Buffer.from(content).toString("utf-8"));
       if (data.parameterSets && data.parameterSets[name]) {
         delete data.parameterSets[name];
-        await workspace.fs.writeFile(this.jsonFileUri, Buffer.from(JSON.stringify(data, null, 2), "utf-8"));
+        await workspace.fs.writeFile(
+          this.jsonFileUri,
+          Buffer.from(JSON.stringify(data, null, 2), "utf-8"),
+        );
         this.scadParameters.updateParameterSets(data.parameterSets);
       }
     } catch {
@@ -199,10 +285,7 @@ export class ScadSession {
 
   public applyParameterSet(name: string | undefined) {
     this.scadParameters.setActiveSet(name);
-    this.scadRenderer.render(
-      this.documentUri.fsPath,
-      this.scadParameters.getActiveValues(),
-    );
+    this.requestRender();
   }
 
   public async exportFormat(format: ModelFormat): Promise<Buffer> {
@@ -210,6 +293,8 @@ export class ScadSession {
       this.documentUri.fsPath,
       this.scadParameters.getActiveValues(),
       format,
+      undefined,
+      this._explode,
     );
   }
 
@@ -220,5 +305,7 @@ export class ScadSession {
     this._onRenderCompleted.dispose();
     this._onRenderError.dispose();
     this._onParametersChanged.dispose();
+    this._onAutoRenderChanged.dispose();
+    this._onExplodeChanged.dispose();
   }
 }

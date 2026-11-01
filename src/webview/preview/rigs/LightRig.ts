@@ -74,7 +74,7 @@ export abstract class LightRig extends Rig {
       ? Rig.GIZMO_OPACITY_SELECTED
       : Rig.GIZMO_OPACITY_UNSELECTED;
     const hex = `#${this.color.getHexString()}`;
-    this.iconObject.element.style.color = hex;
+    this.iconObject.element.style.setProperty("--icon-tint", hex);
     this.iconObject.element.style.opacity = String(opacity);
   }
 }

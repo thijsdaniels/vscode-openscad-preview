@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
+import { t } from "../../i18n/t";
 
 export class NumberFieldInputEvent extends CustomEvent<{ value: number }> {
   static readonly eventName = "input" as const;
@@ -249,7 +250,11 @@ export class ScadNumberField extends LitElement {
     }
 
     return html`
-      <div class="container" @pointerdown=${this.handlePointerDown}>
+      <div
+        class="container"
+        title=${this.readonly ? t("numberField.readonly.tip") : t("numberField.tip")}
+        @pointerdown=${this.handlePointerDown}
+      >
         ${this.min !== undefined && this.max !== undefined
           ? html`<div class="progress-bar" style="width: ${percentage}%"></div>`
           : nothing}

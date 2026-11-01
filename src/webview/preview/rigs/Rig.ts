@@ -38,7 +38,9 @@ export abstract class Rig {
    * tool is active. Override to false for objects like ambient lights that
    * have no meaningful spatial transform.
    */
-  get supportsTransform(): boolean { return true; }
+  get supportsTransform(): boolean {
+    return true;
+  }
 
   /**
    * Read the current properties for display in the Object Properties panel.
@@ -74,7 +76,15 @@ export abstract class Rig {
   setActive(_active: boolean): void {}
 
   /** Whether the object is currently applying its effect to the scene. */
-  get active(): boolean { return true; }
+  get active(): boolean {
+    return true;
+  }
+
+  /**
+   * Called by Stage once per animation frame, before rendering. Override to
+   * keep derived objects (planes, overlays) in sync with the scene graph.
+   */
+  update(): void {}
 
   /**
    * Called by Stage after setVisible(true). Override to react to being shown.
