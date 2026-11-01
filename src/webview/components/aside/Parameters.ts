@@ -1,15 +1,30 @@
 import { consume } from "@lit/context";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { ScadParameter } from "../../../shared/types/ScadParameter";
+import {
+  ScadParameter,
+  StringParameter,
+} from "../../../shared/types/ScadParameter";
+import { StringEditor } from "../../../shared/types/StringEditor";
+import { ColorFieldChangeEvent } from "../atoms/ColorField";
 import { NumberFieldChangeEvent } from "../atoms/NumberField";
+import { PickFieldChangeEvent } from "../atoms/PickField";
 import { ModelContext, modelContext } from "../../contexts/ModelContext";
 import {
   parameterContext,
   ParameterContext,
 } from "../../contexts/ParameterContext";
-import { t } from "../../i18n/t";
+import { MessageKey, t } from "../../i18n/t";
+import {
+  expandedLayout,
+  GroupLayout,
+  isGroupOpen,
+  toggleGroup,
+} from "../../services/GroupLayout";
+import { CollapsibleToggleEvent } from "../atoms/Collapsible";
 import "../atoms/Collapsible";
+import "../atoms/ColorField";
+import "../atoms/PickField";
 import "../atoms/Field";
 import "../atoms/NumberField";
 
@@ -46,13 +61,20 @@ export class Parameters extends LitElement {
       align-items: center;
     }
 
+    .preset-controls {
+      flex-wrap: wrap;
+    }
+
+    /* Narrow panel: the buttons wrap below the preset list. */
     .preset-controls vscode-single-select {
       flex: 1;
+      min-width: 8rem;
     }
 
     .preset-actions {
       display: flex;
       gap: 0.25rem;
+      align-items: center;
     }
 
     vscode-textfield {
@@ -93,6 +115,10 @@ export class Parameters extends LitElement {
   @consume({ context: parameterContext, subscribe: true })
   @state()
   private parameterContext!: ParameterContext;
+
+  /** Owned by the side panel, whose header holds the layout buttons. */
+  @property({ attribute: false })
+  public groupLayout: GroupLayout = expandedLayout();
 
   public render() {
     const { parameters, overrides, parameterSets, activeSetName, labelMode } =
@@ -161,7 +187,16 @@ export class Parameters extends LitElement {
       <div class="groups">
         ${Array.from(groups.entries()).map(
           ([groupName, parameters]) => html`
-            <scad-collapsible heading="${groupName}" open>
+            <scad-collapsible
+              heading="${groupName}"
+              .open=${isGroupOpen(this.groupLayout, groupName)}
+              @toggle=${(e: CollapsibleToggleEvent) =>
+                this.dispatchEvent(
+                  new GroupLayoutChangeEvent(
+                    toggleGroup(this.groupLayout, groupName, e.detail.open),
+                  ),
+                )}
+            >
               ${parameters.map((parameter) => {
                 const isOverridden = parameter.name in overrides;
                 const currentValue = this.getCompoundValue(parameter);
@@ -181,8 +216,8 @@ export class Parameters extends LitElement {
                     ${isOverridden
                       ? html`
                           <vscode-toolbar-button
-                            slot="actions"
                             icon="discard"
+                            slot="actions"
                             label=${t("parameters.revert")}
                             title=${t("parameters.revert.tip")}
                             @click=${() =>
@@ -315,6 +350,10 @@ export class Parameters extends LitElement {
       `;
     }
 
+    if (param.type === "string" && param.editor) {
+      return this.renderStringEditor(param, param.editor, String(currentValue));
+    }
+
     switch (param.type) {
       case "boolean":
         return html`
@@ -359,4 +398,70 @@ export class Parameters extends LitElement {
         return nothing;
     }
   }
+
+  private renderStringEditor(
+    param: StringParameter,
+    editor: StringEditor,
+    value: string,
+  ) {
+    if (editor === "color") {
+      return html`
+        <scad-color-field
+          .value=${value}
+          @change=${(e: ColorFieldChangeEvent) =>
+            this.handleInputChange(param.name, e.detail.value)}
+        ></scad-color-field>
+      `;
+    }
+
+    const button = PICK_BUTTONS[editor];
+    return html`
+      <scad-pick-field
+        .value=${value}
+        label=${t(button.label)}
+        tooltip=${t(button.tooltip)}
+        @change=${(e: PickFieldChangeEvent) =>
+          this.handleInputChange(param.name, e.detail.value)}
+        @pick=${() => this.parameterContext.pick(param.name)}
+      >
+        <vscode-icon name=${button.icon}></vscode-icon>
+      </scad-pick-field>
+    `;
+  }
 }
+
+/** A group was opened or closed by the user; the owner stores the layout. */
+export class GroupLayoutChangeEvent extends CustomEvent<{
+  layout: GroupLayout;
+}> {
+  static readonly eventName = "group-layout-change" as const;
+  constructor(layout: GroupLayout) {
+    super(GroupLayoutChangeEvent.eventName, {
+      detail: { layout },
+      bubbles: true,
+      composed: true,
+    });
+  }
+}
+
+/** Browse button of the editors whose box is opened by the extension. */
+const PICK_BUTTONS: Record<
+  Exclude<StringEditor, "color">,
+  { icon: string; label: MessageKey; tooltip: MessageKey }
+> = {
+  file: {
+    icon: "file",
+    label: "parameters.file",
+    tooltip: "parameters.file.tip",
+  },
+  folder: {
+    icon: "folder",
+    label: "parameters.folder",
+    tooltip: "parameters.folder.tip",
+  },
+  font: {
+    icon: "text-size",
+    label: "parameters.font",
+    tooltip: "parameters.font.tip",
+  },
+};

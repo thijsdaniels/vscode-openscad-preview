@@ -78,10 +78,20 @@
           "default": "",
           "description": "%config.executablePath%"
         },
-        "openscad.enableLazyUnion": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.enableLazyUnion%"
+        "openscad.renderBackend": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "manifold",
+            "cgal"
+          ],
+          "enumDescriptions": [
+            "%config.renderBackend.auto%",
+            "%config.renderBackend.manifold%",
+            "%config.renderBackend.cgal%"
+          ],
+          "default": "auto",
+          "description": "%config.renderBackend%"
         },
         "openscad.parameterLabel": {
           "type": "string",
@@ -95,6 +105,12 @@
           ],
           "default": "name",
           "description": "%config.parameterLabel%"
+        },
+        "openscad.defaultColor": {
+          "type": "string",
+          "format": "color-hex",
+          "default": "#EDEAE0",
+          "description": "%config.defaultColor%"
         }
       }
     },

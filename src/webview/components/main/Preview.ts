@@ -180,7 +180,7 @@ export class Preview extends LitElement {
 
     this.themeObserver.observe(document.body, {
       attributes: true,
-      attributeFilter: ["class", "data-vscode-theme"],
+      attributeFilter: ["class", "data-vscode-theme", "style"],
     });
   }
 
@@ -263,8 +263,10 @@ function getTheme(): Theme {
       0.05,
     );
 
+  // openscad.defaultColor, empty → editor foreground.
   const additive = new Color(
-    styles.getPropertyValue("--vscode-editor-foreground").trim(),
+    styles.getPropertyValue("--scad-default-color").trim() ||
+      styles.getPropertyValue("--vscode-editor-foreground").trim(),
   );
 
   const subtractive = new Color(

@@ -24,5 +24,13 @@
   "Failed to send to slicer: {0}": "Échec de l'envoi au trancheur : {0}",
   "OpenSCAD process exited with code {0}": "OpenSCAD s'est arrêté avec le code {0}",
   "Failed to read temporary output file: {0}": "Impossible de lire le fichier temporaire de sortie : {0}",
-  "Failed to start OpenSCAD: {0}\nExecutable path: {1}": "Impossible de lancer OpenSCAD : {0}\nChemin de l'exécutable : {1}"
+  "Failed to start OpenSCAD: {0}\nExecutable path: {1}": "Impossible de lancer OpenSCAD : {0}\nChemin de l'exécutable : {1}",
+  "Accepted files ({0})": "Fichiers acceptés ({0})",
+  "All files": "Tous les fichiers",
+  "Listing fonts...": "Liste des polices…",
+  "Font name (OpenSCAD syntax, e.g. Liberation Sans:style=Bold)": "Nom de la police (syntaxe OpenSCAD, ex. Liberation Sans:style=Bold)",
+  "current": "actuelle",
+  "Font": "Police",
+  "Regular": "Normal",
+  "Style of {0}": "Style de {0}"
 }

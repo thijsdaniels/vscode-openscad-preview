@@ -6,6 +6,7 @@ import {
   ActiveToolContext,
   activeToolContext,
 } from "../../contexts/ActiveToolContext";
+import { ModelContext, modelContext } from "../../contexts/ModelContext";
 import { MessageKey, t } from "../../i18n/t";
 import type { IconName } from "../atoms/Icon";
 import "../atoms/Icon";
@@ -143,10 +144,23 @@ export class Toolbar extends LitElement {
   @state()
   private activeToolContext!: ActiveToolContext;
 
+  @consume({ context: modelContext, subscribe: true })
+  @state()
+  private modelContext!: ModelContext;
+
   private rememberedVariants = new Map<ActiveTool, string>();
 
   render() {
     return html`
+      <div class="group">
+        <scad-icon-button
+          label=${t("toolbar.settings")}
+          tooltip=${t("toolbar.settings.tip")}
+          @click=${() => this.modelContext.openSettings()}
+        >
+          <vscode-icon name="settings-gear"></vscode-icon>
+        </scad-icon-button>
+      </div>
       ${groups.map(
         (group) => html`
           <div class="group">${group.map((tool) => this.renderTool(tool))}</div>

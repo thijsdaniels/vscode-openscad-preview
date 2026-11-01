@@ -155,6 +155,53 @@ test("ScadParser - reads the description from the comment above", () => {
   ]);
 });
 
+test("ScadParser - detects dedicated string editors", () => {
+  const scadContent = `
+    shade = "#ff8800";
+    couleur_fond = "red";
+    text_font = "Liberation Sans";
+    logo = "logo.svg";
+    outline = "a"; // [file:dxf, .svg]
+    picked = "x"; // [couleur]
+    output_dir = "out";
+    label = "Hello";
+    finish = "matte"; // [matte, glossy]
+  `;
+
+  const parser = new ScadParser(scadContent);
+  const editors = parser.parameters.map((p) =>
+    p.type === "string" ? [p.name, p.editor, p.extensions] : [p.name],
+  );
+
+  assert.deepStrictEqual(editors, [
+    ["shade", "color", undefined],
+    ["couleur_fond", "color", undefined],
+    ["text_font", "font", undefined],
+    [
+      "logo",
+      "file",
+      [
+        "stl",
+        "off",
+        "obj",
+        "amf",
+        "3mf",
+        "dxf",
+        "svg",
+        "png",
+        "dat",
+        "csv",
+        "json",
+      ],
+    ],
+    ["outline", "file", ["dxf", "svg"]],
+    ["picked", "color", undefined],
+    ["output_dir", "folder", undefined],
+    ["label", undefined, undefined],
+    ["finish", undefined, undefined],
+  ]);
+});
+
 test("ScadParser - handles malformed contents defensively", () => {
   const scadContent = `
     /* [Weird Stuff] */

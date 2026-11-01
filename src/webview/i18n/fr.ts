@@ -3,105 +3,172 @@ import type { MessageKey } from "./en";
 /** Traduction française des textes de la vue web. */
 export const fr: Record<MessageKey, string> = {
   // Barre d'outils
+  "toolbar.settings": "Paramètres de l'extension",
+  "toolbar.settings.tip":
+    "Paramètres : ouvrir les réglages de l'extension OpenSCAD Preview.",
   "tool.select": "Sélection",
-  "tool.select.tip": "Sélection : cliquer sur un objet de la vue 3D pour le sélectionner et modifier ses propriétés.",
+  "tool.select.tip":
+    "Sélection : cliquer sur un objet de la vue 3D pour le sélectionner et modifier ses propriétés.",
   "tool.move": "Déplacer",
-  "tool.move.tip": "Déplacer : tirer les flèches de l'objet sélectionné pour le translater.",
+  "tool.move.tip":
+    "Déplacer : tirer les flèches de l'objet sélectionné pour le translater.",
   "tool.rotate": "Pivoter",
-  "tool.rotate.tip": "Pivoter : tirer les anneaux de l'objet sélectionné pour le faire tourner.",
+  "tool.rotate.tip":
+    "Pivoter : tirer les anneaux de l'objet sélectionné pour le faire tourner.",
   "tool.scale": "Redimensionner",
-  "tool.scale.tip": "Redimensionner : tirer les poignées de l'objet sélectionné pour changer sa taille.",
+  "tool.scale.tip":
+    "Redimensionner : tirer les poignées de l'objet sélectionné pour changer sa taille.",
   "tool.measure": "Mesurer",
-  "tool.measure.tip": "Mesurer : cliquer deux points du modèle pour mesurer leur distance. Survoler pour choisir l'accroche des points.",
+  "tool.measure.tip":
+    "Mesurer : cliquer deux points du modèle pour mesurer leur distance. Survoler pour choisir l'accroche des points. Échap quitte l'outil.",
   "tool.measure.vertex": "Sommet",
-  "tool.measure.vertex.tip": "Accroche aux sommets : les points de mesure se collent au coin le plus proche du modèle.",
+  "tool.measure.vertex.tip":
+    "Accroche aux sommets : les points de mesure se collent au coin le plus proche du modèle.",
   "tool.measure.edge": "Arête",
-  "tool.measure.edge.tip": "Accroche aux arêtes : les points de mesure se collent à l'arête la plus proche du modèle.",
+  "tool.measure.edge.tip":
+    "Accroche aux arêtes : les points de mesure se collent à l'arête la plus proche du modèle.",
   "tool.measure.face": "Face",
-  "tool.measure.face.tip": "Accroche aux faces : les points de mesure se placent n'importe où sur la surface du modèle.",
+  "tool.measure.face.tip":
+    "Accroche aux faces : les points de mesure se placent n'importe où sur la surface du modèle.",
 
   // Options d'affichage
   "options.autoRender": "Prévisualiser",
-  "options.autoRender.tip": "Prévisualiser : un clic calcule le modèle maintenant. Ctrl+clic fige l'aperçu automatique (bouton grisé) : le modèle est alors recalculé à chaque enregistrement ou changement de paramètre. Ctrl+clic à nouveau pour le libérer.",
+  "options.autoRender.tip":
+    "Prévisualiser : un clic calcule le modèle maintenant. Ctrl+clic fige l'aperçu automatique (bouton grisé) : le modèle est alors recalculé à chaque enregistrement ou changement de paramètre. Ctrl+clic à nouveau pour le libérer. Figé par défaut.",
   "options.camera": "Changer de caméra",
-  "options.camera.tip": "Changer de caméra : choisir la caméra de la scène utilisée pour la vue 3D.",
+  "options.camera.tip":
+    "Changer de caméra : choisir la caméra de la scène utilisée pour la vue 3D.",
   "options.perspective": "Perspective",
-  "options.perspective.tip": "Vue en perspective : les objets lointains paraissent plus petits, comme à l'œil.",
+  "options.perspective.tip":
+    "Vue en perspective : les objets lointains paraissent plus petits, comme à l'œil.",
   "options.orthographic": "Orthographique",
-  "options.orthographic.tip": "Vue orthographique : sans perspective, les parallèles restent parallèles — pratique pour comparer des cotes.",
+  "options.orthographic.tip":
+    "Vue orthographique : sans perspective, les parallèles restent parallèles — pratique pour comparer des cotes.",
   "options.solid": "Plein",
   "options.solid.tip": "Rendu plein : surfaces opaques et ombrées.",
   "options.xray": "Rayons X",
-  "options.xray.tip": "Rendu rayons X : surfaces translucides pour voir les parties internes cachées.",
+  "options.xray.tip":
+    "Rendu rayons X : surfaces translucides pour voir les parties internes cachées.",
   "options.wireframe": "Fil de fer",
-  "options.wireframe.tip": "Rendu fil de fer : seules les arêtes des triangles du maillage sont dessinées.",
+  "options.wireframe.tip":
+    "Rendu fil de fer : seules les arêtes des triangles du maillage sont dessinées.",
   "options.shadows": "Ombres",
-  "options.shadows.tip": "Ombres : afficher ou masquer les ombres portées par les lumières de la scène.",
+  "options.shadows.tip":
+    "Ombres : afficher ou masquer les ombres portées par les lumières de la scène.",
   "options.envNone": "Sans environnement",
-  "options.envNone.tip": "Sans environnement : le modèle flotte seul, sans grille ni plateau.",
+  "options.envNone.tip":
+    "Sans environnement : le modèle flotte seul, sans grille ni plateau.",
   "options.envGrid": "Grille",
-  "options.envGrid.tip": "Grille : afficher une grille infinie au sol pour juger des dimensions.",
+  "options.envGrid.tip":
+    "Grille : afficher une grille infinie au sol pour juger des dimensions.",
   "options.envBuildPlate": "Plateau d'impression",
-  "options.envBuildPlate.tip": "Plateau d'impression : afficher un plateau d'imprimante 3D sous le modèle.",
+  "options.envBuildPlate.tip":
+    "Plateau d'impression : afficher un plateau d'imprimante 3D sous le modèle.",
   "options.log": "Sortie",
-  "options.log.tip": "Sortie : afficher ou masquer le panneau du bas avec les messages d'OpenSCAD (echo, avertissements, erreurs).",
+  "options.log.tip":
+    "Sortie : afficher ou masquer le panneau du bas avec les messages d'OpenSCAD (echo, avertissements, erreurs).",
   "options.sidePanel": "Panneau latéral",
-  "options.sidePanel.tip": "Panneau latéral : afficher ou masquer le panneau avec la scène, les paramètres, les propriétés et l'environnement.",
+  "options.sidePanel.tip":
+    "Panneau latéral : afficher ou masquer le panneau avec la scène, les paramètres, les propriétés et l'environnement.",
 
   // Onglets du panneau latéral
   "tab.parameters": "Paramètres",
-  "tab.parameters.tip": "Paramètres : variables du personnalisateur du fichier .scad, préréglages, impression et export.",
+  "tab.parameters.tip":
+    "Paramètres : variables du personnalisateur du fichier .scad, préréglages, impression et export.",
   "tab.properties": "Propriétés",
-  "tab.properties.tip": "Propriétés : position, rotation et réglages de l'objet sélectionné dans la scène.",
+  "tab.properties.tip":
+    "Propriétés : position, rotation et réglages de l'objet sélectionné dans la scène.",
   "tab.environment": "Environnement",
-  "tab.environment.tip": "Environnement : réglages de l'ambiance de la vue 3D (brouillard…).",
+  "tab.environment.tip":
+    "Environnement : réglages de l'ambiance de la vue 3D (brouillard…).",
 
   // Sections repliables
   "collapsible.tip": "{0} — cliquer pour plier ou déplier cette section.",
 
   // Onglet Paramètres
   "parameters.preset": "Préréglage",
-  "parameters.presetSelect.tip": "Préréglage : choisir un jeu de valeurs enregistré (dans le fichier .json à côté du .scad). « Aucun » utilise les valeurs du fichier.",
+  "parameters.presetSelect.tip":
+    "Préréglage : choisir un jeu de valeurs enregistré (dans le fichier .json à côté du .scad). « Aucun » utilise les valeurs du fichier.",
   "parameters.presetNone": "Aucun",
   "parameters.saveActive": "Enregistrer le préréglage actif",
-  "parameters.saveActive.tip": "Enregistrer les valeurs actuelles dans le préréglage actif.",
+  "parameters.saveActive.tip":
+    "Enregistrer les valeurs actuelles dans le préréglage actif.",
   "parameters.deleteActive": "Supprimer le préréglage actif",
-  "parameters.deleteActive.tip": "Supprimer le préréglage actif du fichier .json.",
+  "parameters.deleteActive.tip":
+    "Supprimer le préréglage actif du fichier .json.",
   "parameters.saveAsNew": "Enregistrer comme nouveau préréglage",
-  "parameters.saveAsNew.tip": "Enregistrer les valeurs actuelles comme nouveau préréglage (son nom sera demandé).",
+  "parameters.saveAsNew.tip":
+    "Enregistrer les valeurs actuelles comme nouveau préréglage (son nom sera demandé).",
   "parameters.labelDescription": "Libellé depuis la description",
-  "parameters.labelDescription.tip": "Libellé depuis la description : activé, chaque champ affiche le commentaire écrit au-dessus de sa variable (accents permis) au lieu du nom de la variable. Mémorisé dans le réglage openscad.parameterLabel.",
+  "parameters.labelDescription.tip":
+    "Libellé depuis la description : activé, chaque champ affiche le commentaire écrit au-dessus de sa variable (accents permis) au lieu du nom de la variable. Mémorisé dans le réglage openscad.parameterLabel.",
+  "parameters.accordion": "Accordéon",
+  "parameters.accordion.tip":
+    "Accordéon : tous les groupes se replient, puis en ouvrir un referme les autres. Cliquer à nouveau pour quitter ce mode.",
+  "parameters.expandAll": "Tout déplier",
+  "parameters.expandAll.tip":
+    "Déplier tous les groupes. Chaque groupe s'ouvre ou se ferme ensuite librement.",
+  "parameters.collapseAll": "Tout replier",
+  "parameters.collapseAll.tip":
+    "Replier tous les groupes. Chaque groupe s'ouvre ou se ferme ensuite librement.",
   "parameters.defaultGroup": "Paramètres",
   "parameters.revert": "Rétablir",
-  "parameters.revert.tip": "Rétablir : revenir à la valeur définie dans le fichier (ou le préréglage).",
+  "parameters.revert.tip":
+    "Rétablir : revenir à la valeur définie dans le fichier (ou le préréglage).",
   "parameters.field.tip": "{0} (variable : {1})",
   "parameters.print": "Imprimer",
-  "parameters.print.tip": "Imprimer : calculer le modèle et l'ouvrir dans le trancheur 3D (réglage openscad.slicerExecutable, ou application par défaut).",
+  "parameters.print.tip":
+    "Imprimer : calculer le modèle et l'ouvrir dans le trancheur 3D (réglage openscad.slicerExecutable, ou application par défaut).",
   "parameters.export": "Exporter",
-  "parameters.export.tip": "Exporter : calculer le modèle et l'enregistrer en fichier 3MF ou STL.",
+  "parameters.export.tip":
+    "Exporter : calculer le modèle et l'enregistrer en fichier 3MF ou STL.",
   "parameters.checkbox.tip": "Cocher ou décocher pour basculer cette option.",
-  "parameters.text.tip": "Taper le texte puis Entrée, ou quitter le champ, pour l'appliquer.",
+  "parameters.text.tip":
+    "Taper le texte puis Entrée, ou quitter le champ, pour l'appliquer.",
   "parameters.select.tip": "Choisir une valeur dans la liste.",
+  "parameters.color.tip": "Ouvrir la palette de couleurs.",
+  "parameters.colorText.tip":
+    "Couleur en #rrvvbb ou nom de couleur OpenSCAD (red, SteelBlue…). Entrée, ou quitter le champ, pour l'appliquer.",
+  "parameters.file": "Parcourir pour choisir un fichier",
+  "parameters.file.tip":
+    "Parcourir : choisir le fichier (chemin enregistré relatif au fichier .scad).",
+  "parameters.folder": "Parcourir pour choisir un dossier",
+  "parameters.folder.tip":
+    "Parcourir : choisir le dossier (chemin enregistré relatif au fichier .scad).",
+  "parameters.font": "Choisir une police",
+  "parameters.font.tip":
+    "Choisir la police et son style parmi celles installées sur cet ordinateur.",
 
   // Champ numérique
-  "numberField.tip": "Glisser à gauche ou à droite pour changer la valeur (Maj = fin). Cliquer pour saisir une valeur.",
-  "numberField.readonly.tip": "Valeur calculée automatiquement (lecture seule).",
+  "numberField.tip":
+    "Glisser à gauche ou à droite pour changer la valeur (Maj = fin). Cliquer pour saisir une valeur.",
+  "numberField.readonly.tip":
+    "Valeur calculée automatiquement (lecture seule).",
 
   // Arbre de la scène
   "scene.heading": "Scène",
   "scene.add": "Ajouter un objet",
-  "scene.add.tip": "Ajouter un objet à la scène : caméra, plan de coupe ou lumière.",
+  "scene.add.tip":
+    "Ajouter un objet à la scène : caméra, plan de coupe ou lumière.",
+  "scene.explode": "Éclater",
+  "scene.explode.tip":
+    "Éclater : recalcule le modèle avec une pièce par objet de premier niveau (lazy union d'OpenSCAD), chacune sélectionnable et exportée à part. Nouveau clic : les pièces fusionnent en une seule.",
   "scene.row.tip": "{0} — cliquer pour sélectionner cet objet.",
   "scene.remove": "Supprimer",
   "scene.remove.tip": "Supprimer cet objet de la scène.",
-  "scene.removeActiveCamera.tip": "La caméra active ne peut pas être supprimée.",
+  "scene.removeActiveCamera.tip":
+    "La caméra active ne peut pas être supprimée.",
   "scene.enable": "Activer",
   "scene.disable": "Désactiver",
-  "scene.active.tip": "Activer ou désactiver l'effet de cet objet (lumière allumée/éteinte, coupe active ou non).",
+  "scene.active.tip":
+    "Activer ou désactiver l'effet de cet objet (lumière allumée/éteinte, coupe active ou non).",
   "scene.show": "Afficher",
   "scene.hide": "Masquer",
-  "scene.visible.tip": "Afficher ou masquer le repère de cet objet dans la vue 3D.",
+  "scene.visible.tip":
+    "Afficher ou masquer le repère de cet objet dans la vue 3D.",
   "scene.visibleActiveCamera.tip": "La caméra active ne peut pas être masquée.",
+  "scene.visiblePart.tip":
+    "Afficher ou masquer cette pièce du modèle dans la vue 3D.",
 
   // Types d'objets de la scène
   "object.camera": "Caméra",
@@ -111,6 +178,7 @@ export const fr: Record<MessageKey, string> = {
   "object.spotLight": "Projecteur",
   "object.pointLight": "Lumière ponctuelle",
   "object.measurement": "Mesure",
+  "object.modelPart": "Pièce",
 
   // Propriétés de l'objet
   "properties.empty": "Aucun objet sélectionné.",
@@ -135,23 +203,47 @@ export const fr: Record<MessageKey, string> = {
   "properties.rotationZ.tip": "Rotation autour de l'axe Z (degrés).",
   "properties.intensity.tip": "Intensité de la lumière : 0 = éteinte.",
   "properties.angle.tip": "Angle d'ouverture du cône de lumière (degrés).",
-  "properties.penumbra.tip": "Douceur du bord du cône : 0 = bord net, 1 = très doux.",
-  "properties.decay.tip": "Vitesse à laquelle la lumière faiblit avec la distance.",
-  "properties.fov.tip": "Champ de vision de la caméra (degrés) : petit = zoom, grand = grand angle.",
+  "properties.penumbra.tip":
+    "Douceur du bord du cône : 0 = bord net, 1 = très doux.",
+  "properties.decay.tip":
+    "Vitesse à laquelle la lumière faiblit avec la distance.",
+  "properties.fov.tip":
+    "Champ de vision de la caméra (degrés) : petit = zoom, grand = grand angle.",
   "properties.pointA.tip": "Coordonnée du premier point mesuré.",
   "properties.pointB.tip": "Coordonnée du second point mesuré.",
   "properties.delta.tip": "Écart entre les deux points sur cet axe.",
   "properties.total.tip": "Distance en ligne droite entre les deux points.",
+  "properties.part": "Pièce",
+  "properties.name": "Nom",
+  "properties.name.tip":
+    "Nom de l'objet dans le fichier 3MF (un objet par pièce de premier niveau quand le bouton Éclater de l'arbre Scène est enfoncé).",
+  "properties.colors": "Couleur",
+  "properties.colors.tip":
+    "Couleur de la pièce : fixée par color() dans le code, sinon couleur par défaut.",
+  "properties.colors.none": "Aucune",
+  "properties.triangles": "Triangles",
+  "properties.triangles.tip": "Nombre de triangles du maillage de la pièce.",
+  "properties.size": "Dimensions",
+  "properties.sizeX.tip": "Encombrement sur l'axe X (boîte englobante, mm).",
+  "properties.sizeY.tip": "Encombrement sur l'axe Y (boîte englobante, mm).",
+  "properties.sizeZ.tip": "Encombrement sur l'axe Z (boîte englobante, mm).",
+  "properties.inspect": "Inspection (visuel seulement)",
+  "properties.inspectPosition.tip":
+    "Centre de la pièce (mm). Le déplacement est purement visuel : annulé au prochain rendu, jamais écrit dans le .scad.",
+  "properties.inspectRotation.tip":
+    "Rotation de la pièce autour de son centre (degrés). Purement visuel : annulé au prochain rendu, jamais écrit dans le .scad.",
 
   // Onglet Environnement
   "environment.fog": "Brouillard",
   "environment.density": "Densité",
-  "environment.density.tip": "Densité du brouillard : 0 = aucun ; plus la valeur monte, plus les parties lointaines se fondent dans le fond.",
+  "environment.density.tip":
+    "Densité du brouillard : 0 = aucun ; plus la valeur monte, plus les parties lointaines se fondent dans le fond.",
 
   // Panneau de sortie
   "output.heading": "Sortie",
   "output.autoClear": "Effacer à chaque calcul",
-  "output.autoClear.tip": "Effacement automatique : vider la sortie à chaque nouveau calcul du modèle.",
+  "output.autoClear.tip":
+    "Effacement automatique : vider la sortie à chaque nouveau calcul du modèle.",
   "output.clear": "Effacer la sortie",
   "output.clear.tip": "Vider la sortie maintenant.",
   "output.showTrace": "Voir la trace…",
@@ -160,5 +252,6 @@ export const fr: Record<MessageKey, string> = {
   // Bandeau de l'aperçu
   "preview.rendering": "Calcul du SCAD…",
   "preview.idle": "Cliquer sur le bouton Prévisualiser pour calculer le modèle",
-  "preview.pending": "Modifications pas encore calculées — cliquer sur Prévisualiser",
+  "preview.pending":
+    "Modifications pas encore calculées — cliquer sur Prévisualiser",
 };

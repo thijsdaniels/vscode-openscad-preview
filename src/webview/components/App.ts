@@ -16,6 +16,7 @@ import {
 } from "../contexts/ParameterContext";
 import {
   SceneContext,
+  SceneObjectDescriptor,
   SceneObjectType,
   SceneSnapshot,
   sceneContext,
@@ -37,6 +38,7 @@ import { bridge } from "../services/Bridge";
 import { defaultScene } from "../data/defaultScene";
 import { t } from "../i18n/t";
 import { sceneObjectMeta } from "../data/sceneObjectMeta";
+import type { ModelPartDescriptor } from "../preview/Stage";
 import "./aside/SidePanel";
 import "./atoms/SplitLayout";
 import "./footer/Output";
@@ -127,6 +129,9 @@ export class App extends LitElement {
     revert: (name) => {
       bridge.updateParameterOverride(name, undefined);
     },
+    pick: (name) => {
+      bridge.pickParameterValue(name);
+    },
     saveSet: (name) => {
       bridge.saveParameterSet(name);
     },
@@ -148,14 +153,19 @@ export class App extends LitElement {
     base64Data: null,
     isLoading: true,
     loadingMessage: t("preview.rendering"),
-    autoRender: false,
+    autoRender: true,
     renderPending: false,
+    explode: false,
     export: bridge.exportModel,
     sendToSlicer: bridge.sendToSlicer,
     renderNow: () => bridge.renderNow(),
     toggleAutoRender: () => {
       bridge.setAutoRender(!this.modelContext.autoRender);
     },
+    toggleExplode: () => {
+      bridge.setExplode(!this.modelContext.explode);
+    },
+    openSettings: () => bridge.openSettings(),
   };
 
   @provide({ context: activeToolContext })
@@ -289,8 +299,23 @@ export class App extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.unsubscribe = bridge.onMessage(this.handleMessage);
+    window.addEventListener("keydown", this.handleKeyDown);
     bridge.ready();
   }
+
+  /** Escape drops the active tool (measure, move…) back to Select. */
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    const target = e.composedPath()[0];
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    )
+      return;
+    if (this.activeToolContextValue.activeTool === ActiveTool.Select) return;
+    this.activeToolContextValue.setActiveTool(ActiveTool.Select);
+  };
 
   private schedulePersist() {
     if (this.persistTimer !== null) {
@@ -310,10 +335,12 @@ export class App extends LitElement {
     const snapshot: SceneSnapshot = {
       version: 1,
       activeCameraId: this.sceneContextValue.activeCameraId,
-      objects: this.sceneContextValue.objects.map((o) => {
-        const props = properties.get(o.id);
-        return props ? { ...o, properties: props } : { ...o };
-      }),
+      objects: this.sceneContextValue.objects
+        .filter((o) => !sceneObjectMeta[o.type].fromModel)
+        .map((o) => {
+          const props = properties.get(o.id);
+          return props ? { ...o, properties: props } : { ...o };
+        }),
     };
     bridge.persistScene(snapshot);
   }
@@ -386,12 +413,48 @@ export class App extends LitElement {
         this.sceneContextValue.activeCameraId,
       );
       this.pendingProperties = null;
+      this.previewEl.stage.setModelPartsCallback((parts) =>
+        this.syncModelParts(parts),
+      );
+    }
+  }
+
+  /**
+   * Replace the model parts in the scene tree after a model load. A part
+   * keeping its id (same 3MF object name) keeps its visibility.
+   */
+  private syncModelParts(parts: ModelPartDescriptor[]) {
+    const isPart = (o: SceneObjectDescriptor) =>
+      sceneObjectMeta[o.type].fromModel;
+    const previous = new Map(
+      this.sceneContextValue.objects.filter(isPart).map((o) => [o.id, o]),
+    );
+    const partObjects: SceneObjectDescriptor[] = parts.map(({ id, name }) => ({
+      id,
+      type: "model-part",
+      name,
+      visible: previous.get(id)?.visible ?? true,
+      active: true,
+    }));
+
+    this.sceneContextValue = {
+      ...this.sceneContextValue,
+      objects: [
+        ...partObjects,
+        ...this.sceneContextValue.objects.filter((o) => !isPart(o)),
+      ],
+    };
+
+    for (const part of partObjects) {
+      if (!part.visible)
+        this.previewEl?.stage?.setObjectVisible(part.id, false);
     }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.unsubscribe?.();
+    window.removeEventListener("keydown", this.handleKeyDown);
   }
 
   private handleMessage = (message: ExtensionToWebviewMessage) => {
@@ -427,6 +490,10 @@ export class App extends LitElement {
           labelMode: message.mode,
         };
         break;
+      case "defaultColor":
+        // Read back by the preview theme; the body style change triggers it.
+        document.body.style.setProperty("--scad-default-color", message.color);
+        break;
       case "loadingState":
         this.logController.processLoadingState(message.loading);
         this.modelContext = {
@@ -441,6 +508,9 @@ export class App extends LitElement {
           autoRender: message.enabled,
           renderPending: message.pending,
         };
+        break;
+      case "explode":
+        this.modelContext = { ...this.modelContext, explode: message.enabled };
         break;
       case "log":
         if (message.message) {
@@ -458,9 +528,15 @@ export class App extends LitElement {
     if (parsed) {
       const { properties, ...rest } = this.deconstructSnapshot(parsed);
       this.pendingProperties = properties;
+      // Model parts come from the current render, never from the snapshot.
+      const isPart = (o: SceneObjectDescriptor) =>
+        sceneObjectMeta[o.type]?.fromModel ?? true;
       this.sceneContextValue = {
         ...this.sceneContextValue,
-        objects: rest.objects,
+        objects: [
+          ...this.sceneContextValue.objects.filter(isPart),
+          ...rest.objects.filter((o) => !isPart(o)),
+        ],
         activeCameraId: rest.activeCameraId,
       };
     }

@@ -15,6 +15,8 @@ export type ParameterContext = {
     value: ScadParameter["value"],
   ) => void;
   revert: (name: ScadParameter["name"]) => void;
+  /** Opens the extension's native box (file, folder, font) for a value. */
+  pick: (name: ScadParameter["name"]) => void;
   saveSet: (name: string) => void;
   saveAsNewSet: () => void;
   applySet: (name: string | undefined) => void;

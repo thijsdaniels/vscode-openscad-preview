@@ -37,6 +37,7 @@ export class ScadRenderer {
   public async render(
     path: string,
     parameters: Record<string, string | number | boolean>,
+    explode: boolean,
   ) {
     if (!path) return;
 
@@ -54,6 +55,7 @@ export class ScadRenderer {
         parameters,
         format,
         this.onLog,
+        explode,
       );
       this.onComplete({ buffer: modelBuffer, format });
     } catch (err) {

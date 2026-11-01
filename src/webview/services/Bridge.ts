@@ -37,6 +37,10 @@ export class Bridge {
     vscode.postMessage({ type: "parameterChanged", name, value });
   }
 
+  public pickParameterValue(name: string) {
+    vscode.postMessage({ type: "pickParameterValue", name });
+  }
+
   public saveParameterSet(name: string) {
     vscode.postMessage({ type: "saveParameterSet", name });
   }
@@ -67,6 +71,14 @@ export class Bridge {
 
   public renderNow() {
     vscode.postMessage({ type: "renderNow" });
+  }
+
+  public setExplode(enabled: boolean) {
+    vscode.postMessage({ type: "setExplode", enabled });
+  }
+
+  public openSettings() {
+    vscode.postMessage({ type: "openSettings" });
   }
 
   public setParameterLabel(mode: ParameterLabelMode) {

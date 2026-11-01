@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams, spawn } from "child_process";
+import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import { existsSync } from "fs";
 import { readFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
@@ -7,13 +7,16 @@ import { platform } from "process";
 import { l10n, window, workspace } from "vscode";
 import { ModelFormat } from "../../shared/types/ModelFormat";
 
+type RenderBackend = "auto" | "manifold" | "cgal";
+
 const platformDefaults: Record<string, string[]> = {
   darwin: ["/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD"],
+  // Nightly first: it ships the fast Manifold engine, the 2021 release does not.
   win32: [
-    "C:\\Program Files\\OpenSCAD\\openscad.exe",
-    "C:\\Program Files (x86)\\OpenSCAD\\openscad.exe",
     "C:\\Program Files\\OpenSCAD (Nightly)\\openscad.exe",
     "C:\\Program Files (x86)\\OpenSCAD (Nightly)\\openscad.exe",
+    "C:\\Program Files\\OpenSCAD\\openscad.exe",
+    "C:\\Program Files (x86)\\OpenSCAD\\openscad.exe",
   ],
   linux: ["/usr/bin/openscad", "/usr/local/bin/openscad"],
 };
@@ -28,7 +31,8 @@ export class ScadClient {
     ChildProcessWithoutNullStreams
   >();
 
-  public static readonly outputChannel = window.createOutputChannel("OpenSCAD Preview");
+  public static readonly outputChannel =
+    window.createOutputChannel("OpenSCAD Preview");
 
   private static _executablePath: string | undefined;
 
@@ -55,12 +59,41 @@ export class ScadClient {
     return "openscad";
   }
 
-  private static get enableLazyUnion(): string[] {
+  // Probe result per executable: does it accept `--backend` (OpenSCAD ≥ 2024)?
+  private static backendSupport = new Map<string, Promise<boolean>>();
+
+  private static supportsBackend(execPath: string): Promise<boolean> {
+    let probe = this.backendSupport.get(execPath);
+    if (!probe) {
+      probe = new Promise((resolve) => {
+        // `--help` prints to stderr on some versions: scan both streams.
+        execFile(execPath, ["--help"], (_error, stdout, stderr) => {
+          const supported = `${stdout}${stderr}`.includes("--backend");
+          if (!supported) {
+            this.outputChannel.appendLine(
+              "[OpenSCAD] No --backend support (OpenSCAD < 2024): slow CGAL rendering. Install a recent OpenSCAD (nightly) to use Manifold.",
+            );
+          }
+          resolve(supported);
+        });
+      });
+      this.backendSupport.set(execPath, probe);
+    }
+    return probe;
+  }
+
+  private static async backendArgs(execPath: string): Promise<string[]> {
     const setting = workspace
       .getConfiguration("openscad")
-      .get<boolean>("enableLazyUnion", false);
+      .get<RenderBackend>("renderBackend", "auto");
 
-    return setting ? ["--enable", "lazy-union"] : [];
+    if (setting === "auto") {
+      return (await this.supportsBackend(execPath))
+        ? ["--backend", "manifold"]
+        : [];
+    }
+
+    return ["--backend", setting];
   }
 
   public static async render(
@@ -68,6 +101,8 @@ export class ScadClient {
     parameters: Record<string, string | number | boolean> = {},
     format: ModelFormat = ModelFormat.ThreeMF,
     onStderr?: (chunk: string) => void,
+    // Lazy union: each top-level object becomes its own part in the export.
+    explode = false,
   ): Promise<Buffer> {
     // Kill any currently running process for this file to prevent runaway
     // spawn leaks when sliders emit rapid updates.
@@ -76,6 +111,9 @@ export class ScadClient {
       existingProcess.kill();
       this.activeProcesses.delete(scadPath);
     }
+
+    const execPath = ScadClient.executablePath;
+    const backend = await this.backendArgs(execPath);
 
     return new Promise((resolve, reject) => {
       const tmpFile = join(
@@ -93,18 +131,20 @@ export class ScadClient {
         paramArgs.push("-D", `${name}=${value}`);
       }
 
-      const execPath = ScadClient.executablePath;
       const args = [
         "--export-format",
         format,
-        ...this.enableLazyUnion,
+        ...backend,
+        ...(explode ? ["--enable", "lazy-union"] : []),
         "-o",
         tmpFile,
         ...paramArgs,
         scadPath,
       ];
 
-      this.outputChannel.appendLine(`[OpenSCAD] Running: ${execPath} ${args.join(" ")}`);
+      this.outputChannel.appendLine(
+        `[OpenSCAD] Running: ${execPath} ${args.join(" ")}`,
+      );
 
       const process = spawn(execPath, args);
 
@@ -132,24 +172,43 @@ export class ScadClient {
         }
 
         // If process was killed gracefully by our cancellation, reject cleanly.
-        if (signal === "SIGTERM" || (platform === "win32" && signal === null && code === 1 && stderrBuffer === "")) {
+        if (
+          signal === "SIGTERM" ||
+          (platform === "win32" &&
+            signal === null &&
+            code === 1 &&
+            stderrBuffer === "")
+        ) {
           reject(new Error("Render cancelled"));
           return;
         }
 
         if (code !== 0) {
           const detail = stderrBuffer.trim() ? `\n${stderrBuffer.trim()}` : "";
-          this.outputChannel.appendLine(`[OpenSCAD] Process exited with code ${code}${detail ? "" : " (no stderr output)"}`);
-          reject(new Error(l10n.t("OpenSCAD process exited with code {0}", String(code)) + detail));
+          this.outputChannel.appendLine(
+            `[OpenSCAD] Process exited with code ${code}${detail ? "" : " (no stderr output)"}`,
+          );
+          reject(
+            new Error(
+              l10n.t("OpenSCAD process exited with code {0}", String(code)) +
+                detail,
+            ),
+          );
           return;
         }
 
         try {
           const buffer = await readFile(tmpFile);
-          this.outputChannel.appendLine(`[OpenSCAD] Render complete: ${tmpFile}`);
+          this.outputChannel.appendLine(
+            `[OpenSCAD] Render complete: ${tmpFile}`,
+          );
           resolve(buffer);
         } catch (err) {
-          reject(new Error(l10n.t("Failed to read temporary output file: {0}", String(err))));
+          reject(
+            new Error(
+              l10n.t("Failed to read temporary output file: {0}", String(err)),
+            ),
+          );
         } finally {
           // Clean up the temp file
           try {
@@ -164,7 +223,11 @@ export class ScadClient {
         if (this.activeProcesses.get(scadPath) === process) {
           this.activeProcesses.delete(scadPath);
         }
-        const msg = l10n.t("Failed to start OpenSCAD: {0}\nExecutable path: {1}", err.message, execPath);
+        const msg = l10n.t(
+          "Failed to start OpenSCAD: {0}\nExecutable path: {1}",
+          err.message,
+          execPath,
+        );
         this.outputChannel.appendLine(`[OpenSCAD] ${msg}`);
         reject(new Error(msg));
       });

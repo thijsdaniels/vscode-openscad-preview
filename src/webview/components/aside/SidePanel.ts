@@ -1,6 +1,13 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { MessageKey, t } from "../../i18n/t";
+import {
+  collapsedLayout,
+  expandedLayout,
+  GroupLayout,
+  toggleAccordion,
+} from "../../services/GroupLayout";
+import type { GroupLayoutChangeEvent } from "./Parameters";
 import "./Environment";
 import "./ObjectProperties";
 import "./Parameters";
@@ -86,6 +93,19 @@ export class SidePanel extends LitElement {
       text-overflow: ellipsis;
     }
 
+    .tab-actions {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 6px;
+    }
+
+    .separator {
+      width: 1px;
+      height: 16px;
+      background: var(--vscode-panel-border);
+    }
+
     .tab-strip {
       display: flex;
       flex-direction: row;
@@ -103,6 +123,37 @@ export class SidePanel extends LitElement {
   `;
 
   @state() private activeTab: Tab = tabs[0];
+  /** Parameter groups layout, kept here so it survives tab switches. */
+  @state() private groupLayout: GroupLayout = expandedLayout();
+
+  private renderGroupLayoutButtons() {
+    return html`
+      <div class="tab-actions">
+        <vscode-toolbar-button
+          icon="fold"
+          label=${t("parameters.accordion")}
+          title=${t("parameters.accordion.tip")}
+          toggleable
+          .checked=${this.groupLayout.mode === "accordion"}
+          @change=${() =>
+            (this.groupLayout = toggleAccordion(this.groupLayout))}
+        ></vscode-toolbar-button>
+        <vscode-toolbar-button
+          icon="expand-all"
+          label=${t("parameters.expandAll")}
+          title=${t("parameters.expandAll.tip")}
+          @click=${() => (this.groupLayout = expandedLayout())}
+        ></vscode-toolbar-button>
+        <vscode-toolbar-button
+          icon="collapse-all"
+          label=${t("parameters.collapseAll")}
+          title=${t("parameters.collapseAll.tip")}
+          @click=${() => (this.groupLayout = collapsedLayout())}
+        ></vscode-toolbar-button>
+        <span class="separator"></span>
+      </div>
+    `;
+  }
 
   render() {
     return html`
@@ -114,6 +165,9 @@ export class SidePanel extends LitElement {
           <div class="tab-heading" title=${t(this.activeTab.tip)}>
             ${t(this.activeTab.label)}
           </div>
+          ${this.activeTab.id === "parameters"
+            ? this.renderGroupLayoutButtons()
+            : nothing}
           <div class="tab-strip">
             ${tabs.map(
               (tab) => html`
@@ -134,7 +188,11 @@ export class SidePanel extends LitElement {
         </div>
         <div class="tab-content">
           ${this.activeTab.id === "parameters"
-            ? html`<scad-parameters></scad-parameters>`
+            ? html`<scad-parameters
+                .groupLayout=${this.groupLayout}
+                @group-layout-change=${(e: GroupLayoutChangeEvent) =>
+                  (this.groupLayout = e.detail.layout)}
+              ></scad-parameters>`
             : nothing}
           ${this.activeTab.id === "properties"
             ? html`<scad-object-properties></scad-object-properties>`

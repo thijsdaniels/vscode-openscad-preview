@@ -5,7 +5,9 @@ import {
   Uri,
   Webview,
   WebviewPanel,
+  commands,
   env,
+  extensions,
   l10n,
   window,
   workspace,
@@ -18,6 +20,7 @@ import { ModelFormat } from "../../shared/types/ModelFormat";
 import { ParameterLabelMode } from "../../shared/types/ParameterLabelMode";
 import { WebviewToExtensionMessage } from "../../shared/types/WebviewToExtensionMessage";
 import { ScadSession } from "../core/ScadSession";
+import { PARAMETER_PICKERS } from "../services/ParameterPickers";
 
 export class ScadWebviewPanel {
   private readonly panel: WebviewPanel;
@@ -65,30 +68,40 @@ export class ScadWebviewPanel {
           case "parameterChanged":
             this.session.updateParameterValue(message.name, message.value);
             return;
+          case "pickParameterValue":
+            this.pickParameterValue(message.name);
+            return;
           case "saveParameterSet":
             this.session.saveParameterSet(message.name);
             return;
           case "promptSaveParameterSet":
-            window.showInputBox({
-              prompt: l10n.t("Enter new parameter set name:"),
-              placeHolder: l10n.t("Preset Name"),
-            }).then((name) => {
-              if (name && name.trim()) {
-                this.session.saveParameterSet(name.trim());
-              }
-            });
+            window
+              .showInputBox({
+                prompt: l10n.t("Enter new parameter set name:"),
+                placeHolder: l10n.t("Preset Name"),
+              })
+              .then((name) => {
+                if (name && name.trim()) {
+                  this.session.saveParameterSet(name.trim());
+                }
+              });
             return;
           case "deleteParameterSet": {
             const deleteLabel = l10n.t("Delete");
-            window.showWarningMessage(
-              l10n.t('Are you sure you want to delete the "{0}" parameter set?', message.name),
-              { modal: true },
-              deleteLabel
-            ).then((selection) => {
-              if (selection === deleteLabel) {
-                this.session.deleteParameterSet(message.name);
-              }
-            });
+            window
+              .showWarningMessage(
+                l10n.t(
+                  'Are you sure you want to delete the "{0}" parameter set?',
+                  message.name,
+                ),
+                { modal: true },
+                deleteLabel,
+              )
+              .then((selection) => {
+                if (selection === deleteLabel) {
+                  this.session.deleteParameterSet(message.name);
+                }
+              });
             return;
           }
           case "applyParameterSet":
@@ -106,6 +119,22 @@ export class ScadWebviewPanel {
           case "renderNow":
             this.session.renderNow();
             return;
+          case "setExplode":
+            this.session.setExplode(message.enabled);
+            return;
+          case "openSettings":
+            // Settings editor filtered on this extension's own settings.
+            commands.executeCommand(
+              "workbench.action.openSettings",
+              `@ext:${
+                extensions.all.find(
+                  (ext) =>
+                    ext.extensionUri.toString() ===
+                    this.extensionUri.toString(),
+                )?.id ?? ""
+              }`,
+            );
+            return;
           case "setParameterLabel":
             // Stored globally; the configuration listener echoes it back.
             workspace
@@ -116,7 +145,9 @@ export class ScadWebviewPanel {
             this.workspaceState.update(this.sceneStateKey, message.snapshot);
             return;
           case "error":
-            window.showErrorMessage(l10n.t("Preview Error: {0}", message.message));
+            window.showErrorMessage(
+              l10n.t("Preview Error: {0}", message.message),
+            );
             return;
         }
       },
@@ -172,19 +203,23 @@ export class ScadWebviewPanel {
         // to the output channel for the full OpenSCAD stderr output.
         const msg = err.message;
         const showOutputLabel = l10n.t("Show Output");
-        window.showErrorMessage(
-          l10n.t("OpenSCAD render failed: {0}", msg.split("\n")[0]),
-          showOutputLabel
-        ).then((choice) => {
-          if (choice === showOutputLabel) {
-            // The output channel is named "OpenSCAD Preview" — reveal it.
-            // We can't reference it directly here, but the user can open it
-            // from View > Output and select "OpenSCAD Preview".
-            window.showInformationMessage(
-              l10n.t('Open the Output panel and select "OpenSCAD Preview" from the dropdown to see the full error.')
-            );
-          }
-        });
+        window
+          .showErrorMessage(
+            l10n.t("OpenSCAD render failed: {0}", msg.split("\n")[0]),
+            showOutputLabel,
+          )
+          .then((choice) => {
+            if (choice === showOutputLabel) {
+              // The output channel is named "OpenSCAD Preview" — reveal it.
+              // We can't reference it directly here, but the user can open it
+              // from View > Output and select "OpenSCAD Preview".
+              window.showInformationMessage(
+                l10n.t(
+                  'Open the Output panel and select "OpenSCAD Preview" from the dropdown to see the full error.',
+                ),
+              );
+            }
+          });
 
         // Also forward the first line of the error to the webview log panel.
         if (this.isWebviewReady) {
@@ -222,6 +257,12 @@ export class ScadWebviewPanel {
         ) {
           this.postParameterLabel();
         }
+        if (
+          this.isWebviewReady &&
+          event.affectsConfiguration("openscad.defaultColor")
+        ) {
+          this.postDefaultColor();
+        }
       },
       null,
       this.disposables,
@@ -231,6 +272,16 @@ export class ScadWebviewPanel {
       ({ enabled, pending }) => {
         if (this.isWebviewReady) {
           this.postMessage({ type: "autoRender", enabled, pending });
+        }
+      },
+      null,
+      this.disposables,
+    );
+
+    this.session.onExplodeChanged(
+      (enabled) => {
+        if (this.isWebviewReady) {
+          this.postMessage({ type: "explode", enabled });
         }
       },
       null,
@@ -317,6 +368,29 @@ export class ScadWebviewPanel {
     this.postMessage({ type: "parameterLabel", mode });
   }
 
+  private async pickParameterValue(name: string) {
+    const param = this.session.currentParameters.find((p) => p.name === name);
+    if (param?.type !== "string" || !param.editor) return;
+    const picker = PARAMETER_PICKERS[param.editor];
+    if (!picker) return;
+
+    const current = String(this.session.currentOverrides[name] ?? param.value);
+    const value = await picker(
+      param,
+      current,
+      path.dirname(this.session.documentUri.fsPath),
+    );
+    // The override echoes back to the webview through onParametersChanged.
+    if (value !== undefined) this.session.updateParameterValue(name, value);
+  }
+
+  private postDefaultColor() {
+    const color = workspace
+      .getConfiguration("openscad")
+      .get<string>("defaultColor", "");
+    this.postMessage({ type: "defaultColor", color });
+  }
+
   private pushInitialState() {
     // Send the persisted scene snapshot first so the webview can hydrate
     // before any other state arrives. `null` means "no saved scene" — the
@@ -326,7 +400,9 @@ export class ScadWebviewPanel {
 
     // The webview is recreated on tab re-focus: restore the toggle state.
     this.postMessage({ type: "autoRender", ...this.session.autoRender });
+    this.postMessage({ type: "explode", enabled: this.session.explode });
     this.postParameterLabel();
+    this.postDefaultColor();
 
     // Send initial parameters
     const params = this.session.currentParameters;
@@ -386,7 +462,10 @@ export class ScadWebviewPanel {
     const appendix = activeSetName ? ` - ${activeSetName}` : "";
 
     const defaultUri = Uri.file(
-      this.session.documentUri.fsPath.replace(/\.scad$/i, `${appendix}.${format.value}`),
+      this.session.documentUri.fsPath.replace(
+        /\.scad$/i,
+        `${appendix}.${format.value}`,
+      ),
     );
 
     const filters = {
@@ -436,12 +515,15 @@ export class ScadWebviewPanel {
         async () => {
           const config = workspace.getConfiguration("openscad");
           const formatValue = config.get<string>("previewFormat") || "3mf";
-          const format = formatValue === "stl" ? ModelFormat.STL : ModelFormat.ThreeMF;
+          const format =
+            formatValue === "stl" ? ModelFormat.STL : ModelFormat.ThreeMF;
 
           const buffer = await this.session.exportFormat(format);
 
           const activeSetName = this.session.activeSetName;
-          const appendix = activeSetName ? `_${activeSetName.replace(/[^a-z0-9]/gi, '_')}` : "";
+          const appendix = activeSetName
+            ? `_${activeSetName.replace(/[^a-z0-9]/gi, "_")}`
+            : "";
           const timestamp = new Date().getTime();
           const tmpFilePath = path.join(
             os.tmpdir(),
