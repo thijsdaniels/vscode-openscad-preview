@@ -158,7 +158,7 @@ export class Toolbar extends LitElement {
           tooltip=${t("toolbar.settings.tip")}
           @click=${() => this.modelContext.openSettings()}
         >
-          <vscode-icon name="settings-gear"></vscode-icon>
+          <scad-icon name="settings"></scad-icon>
         </scad-icon-button>
       </div>
       ${groups.map(

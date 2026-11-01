@@ -22,6 +22,7 @@
     "lint": "eslint src --ext ts",
     "types": "tsc -p tsconfig.extension.json && tsc -p tsconfig.webview.json",
     "format": "prettier --write .",
+    "icons": "tsx ./scripts/generate-icons.ts",
     "test": "node ./dist/test/runTest.js",
     "update": "npx npm-check-updates@latest -u -i"
   },
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
+    "@fluentui/svg-icons": "^1.1.345",
     "@types/node": "^25.6.0",
     "@types/three": "^0.184.0",
     "@types/vscode": "^1.105.1",
@@ -118,7 +120,7 @@
       {
         "command": "openscad.showPanel",
         "title": "%command.showPanel%",
-        "icon": "$(open-preview)"
+        "icon": "media/preview.svg"
       }
     ],
     "menus": {
@@ -175,6 +177,7 @@
     "package.nls.json",
     "package.nls.fr.json",
     "icon.png",
+    "media",
     "LICENSE.md",
     "CHANGELOG.md",
     "node_modules/@vscode/codicons/dist"

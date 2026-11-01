@@ -7,7 +7,10 @@ import {
   GroupLayout,
   toggleAccordion,
 } from "../../services/GroupLayout";
+import type { IconName } from "../atoms/Icon";
 import type { GroupLayoutChangeEvent } from "./Parameters";
+import "../atoms/Icon";
+import "../atoms/IconButton";
 import "./Environment";
 import "./ObjectProperties";
 import "./Parameters";
@@ -21,7 +24,7 @@ declare global {
 
 interface Tab {
   id: string;
-  icon: string;
+  icon: IconName;
   label: MessageKey;
   tip: MessageKey;
 }
@@ -35,7 +38,7 @@ const tabs: Tab[] = [
   },
   {
     id: "properties",
-    icon: "symbol-misc",
+    icon: "scene",
     label: "tab.properties",
     tip: "tab.properties.tip",
   },
@@ -129,27 +132,30 @@ export class SidePanel extends LitElement {
   private renderGroupLayoutButtons() {
     return html`
       <div class="tab-actions">
-        <vscode-toolbar-button
-          icon="fold"
+        <scad-icon-button
           label=${t("parameters.accordion")}
-          title=${t("parameters.accordion.tip")}
+          tooltip=${t("parameters.accordion.tip")}
           toggleable
           .checked=${this.groupLayout.mode === "accordion"}
           @change=${() =>
             (this.groupLayout = toggleAccordion(this.groupLayout))}
-        ></vscode-toolbar-button>
-        <vscode-toolbar-button
-          icon="expand-all"
+        >
+          <scad-icon name="accordion"></scad-icon>
+        </scad-icon-button>
+        <scad-icon-button
           label=${t("parameters.expandAll")}
-          title=${t("parameters.expandAll.tip")}
+          tooltip=${t("parameters.expandAll.tip")}
           @click=${() => (this.groupLayout = expandedLayout())}
-        ></vscode-toolbar-button>
-        <vscode-toolbar-button
-          icon="collapse-all"
+        >
+          <scad-icon name="expand-all"></scad-icon>
+        </scad-icon-button>
+        <scad-icon-button
           label=${t("parameters.collapseAll")}
-          title=${t("parameters.collapseAll.tip")}
+          tooltip=${t("parameters.collapseAll.tip")}
           @click=${() => (this.groupLayout = collapsedLayout())}
-        ></vscode-toolbar-button>
+        >
+          <scad-icon name="collapse-all"></scad-icon>
+        </scad-icon-button>
         <span class="separator"></span>
       </div>
     `;
@@ -171,17 +177,18 @@ export class SidePanel extends LitElement {
           <div class="tab-strip">
             ${tabs.map(
               (tab) => html`
-                <vscode-toolbar-button
-                  icon=${tab.icon}
+                <scad-icon-button
                   label=${t(tab.label)}
-                  title=${t(tab.tip)}
+                  tooltip=${t(tab.tip)}
                   toggleable
                   .checked=${tab == this.activeTab}
                   @change=${() => {
                     this.activeTab = tab;
                     this.requestUpdate();
                   }}
-                ></vscode-toolbar-button>
+                >
+                  <scad-icon name=${tab.icon}></scad-icon>
+                </scad-icon-button>
               `,
             )}
           </div>

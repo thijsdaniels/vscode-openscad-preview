@@ -51,6 +51,20 @@ export class IconButton extends LitElement {
       color: var(--vscode-disabledForeground);
     }
 
+    /* Colour icons ignore "color": grey them out explicitly. */
+    button.latched ::slotted(*) {
+      filter: saturate(0.25);
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: 0.4;
+    }
+
+    button:disabled:hover {
+      background: transparent;
+    }
+
     ::slotted(svg) {
       display: block;
     }
@@ -63,10 +77,12 @@ export class IconButton extends LitElement {
   @property({ type: Boolean, reflect: true }) checked = false;
   /** Grey "locked on" look, driven by the owner (not toggled by clicks). */
   @property({ type: Boolean, reflect: true }) latched = false;
+  @property({ type: Boolean, reflect: true }) disabled = false;
 
   render() {
     return html`
       <button
+        ?disabled=${this.disabled}
         aria-label=${this.label || nothing}
         title=${this.tooltip || this.label || nothing}
         role=${this.toggleable ? "switch" : nothing}

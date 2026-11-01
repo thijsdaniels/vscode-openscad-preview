@@ -159,14 +159,15 @@ export class SceneTree extends LitElement {
           >
             <scad-icon name="explode"></scad-icon>
           </scad-icon-button>
-          <vscode-toolbar-button
-            icon="add"
+          <scad-icon-button
             label=${t("scene.add")}
-            title=${t("scene.add.tip")}
+            tooltip=${t("scene.add.tip")}
             @click=${() => {
               this.addMenu.show = true;
             }}
-          ></vscode-toolbar-button>
+          >
+            <scad-icon name="add"></scad-icon>
+          </scad-icon-button>
           <vscode-context-menu
             .data=${ADD_MENU_ITEMS}
             @vsc-context-menu-select=${(e: VscContextMenuSelectEvent) => {
@@ -204,11 +205,10 @@ export class SceneTree extends LitElement {
         ${meta.fromModel
           ? nothing
           : html`
-              <vscode-toolbar-button
+              <scad-icon-button
                 class="remove-button"
-                icon="trash"
                 label=${t("scene.remove")}
-                title=${isActiveCamera
+                tooltip=${isActiveCamera
                   ? t("scene.removeActiveCamera.tip")
                   : t("scene.remove.tip")}
                 ?disabled=${isActiveCamera}
@@ -216,14 +216,15 @@ export class SceneTree extends LitElement {
                   e.stopPropagation();
                   if (!isActiveCamera) this.sceneContext.removeObject(obj.id);
                 }}
-              ></vscode-toolbar-button>
+              >
+                <scad-icon name="trash"></scad-icon>
+              </scad-icon-button>
             `}
         ${meta.supportsActive
           ? html`
-              <vscode-toolbar-button
-                icon="symbol-event"
+              <scad-icon-button
                 label=${obj.active ? t("scene.disable") : t("scene.enable")}
-                title=${t("scene.active.tip")}
+                tooltip=${t("scene.active.tip")}
                 toggleable
                 .checked=${obj.active}
                 @click=${(e: Event) => e.stopPropagation()}
@@ -231,13 +232,14 @@ export class SceneTree extends LitElement {
                   e.stopPropagation();
                   this.sceneContext.setActive(obj.id, !obj.active);
                 }}
-              ></vscode-toolbar-button>
+              >
+                <scad-icon name="active"></scad-icon>
+              </scad-icon-button>
             `
           : nothing}
-        <vscode-toolbar-button
-          icon="eye"
+        <scad-icon-button
           label=${obj.visible ? t("scene.hide") : t("scene.show")}
-          title=${isActiveCamera
+          tooltip=${isActiveCamera
             ? t("scene.visibleActiveCamera.tip")
             : meta.visibleTip}
           toggleable
@@ -248,7 +250,9 @@ export class SceneTree extends LitElement {
             e.stopPropagation();
             this.sceneContext.setVisible(obj.id, !obj.visible);
           }}
-        ></vscode-toolbar-button>
+        >
+          <scad-icon name=${obj.visible ? "eye" : "eye-off"}></scad-icon>
+        </scad-icon-button>
       </div>
     `;
   }
